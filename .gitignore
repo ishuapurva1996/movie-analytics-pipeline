@@ -17,3 +17,7 @@ scripts/output_imbd/
 /docs/brainstorms/
 /agent_outputs/
 /movie_pipeline_plan.docx
+
+# Generated application artifacts and real dashboard exports.
+/_site/
+/web_dashboard/data/
