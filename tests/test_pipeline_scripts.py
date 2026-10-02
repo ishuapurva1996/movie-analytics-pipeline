@@ -64,7 +64,10 @@ class PipelineFailureTests(unittest.TestCase):
             local_file = output_path / "tmdb_genres.csv"
             local_file.write_text("id,name\n1,Action\n")
 
-            with patch.object(tmdb_upload, "tmdb_output_dir", return_value=output_path):
+            with (
+                patch.object(tmdb_upload, "tmdb_output_dir", return_value=output_path),
+                patch.object(tmdb_upload, "s3_bucket_name", return_value="upload-test-bucket"),
+            ):
                 with patch.object(tmdb_upload, "upload_to_s3", side_effect=RuntimeError("upload failed")):
                     with self.assertRaisesRegex(RuntimeError, "upload failed"):
                         tmdb_upload.main()
