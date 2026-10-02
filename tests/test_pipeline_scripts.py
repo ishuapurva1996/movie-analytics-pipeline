@@ -1,4 +1,5 @@
 import json
+import os
 import sys
 import tempfile
 import unittest
@@ -12,6 +13,7 @@ import requests
 SCRIPTS_DIR = Path(__file__).resolve().parents[1] / "scripts"
 sys.path.insert(0, str(SCRIPTS_DIR))
 
+import config  # noqa: E402
 import imdb_download_upload  # noqa: E402
 import tmdb_enrichment  # noqa: E402
 import tmdb_genre  # noqa: E402
@@ -20,6 +22,13 @@ import tmdb_upload  # noqa: E402
 
 
 class PipelineFailureTests(unittest.TestCase):
+    def test_s3_bucket_requires_explicit_private_configuration(self):
+        with patch.dict(os.environ, {}, clear=True):
+            with self.assertRaisesRegex(RuntimeError, "S3_BUCKET_NAME"):
+                config.s3_bucket_name()
+        with patch.dict(os.environ, {"S3_BUCKET_NAME": "configured-test-bucket"}):
+            self.assertEqual(config.s3_bucket_name(), "configured-test-bucket")
+
     def test_imdb_download_http_error_is_raised(self):
         response = Mock()
         response.raise_for_status.side_effect = RuntimeError("download failed")
