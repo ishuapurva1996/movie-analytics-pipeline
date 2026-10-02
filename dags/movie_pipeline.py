@@ -2,11 +2,11 @@ import os
 import subprocess
 import sys
 from collections.abc import Iterable
-from datetime import timedelta
+from datetime import datetime, timedelta, timezone
 
 import pendulum
 from airflow.providers.snowflake.hooks.snowflake import SnowflakeHook
-from airflow.sdk import dag, task
+from airflow.sdk import dag, task, get_current_context
 
 
 PROJECT_SCRIPTS = "/opt/airflow/project/scripts"
@@ -35,6 +35,33 @@ DBT_ENV = {
 def run_project_script(script_name: str) -> None:
     script_path = os.path.join(PROJECT_SCRIPTS, script_name)
     subprocess.run([sys.executable, script_path], check=True, cwd=PROJECT_SCRIPTS)
+
+
+def dbt_success_receipt(_output: str) -> dict:
+    """BashOperator calls this only after the full dbt command exits with zero."""
+    ti = get_current_context()['ti']
+    return {
+        'schema_version': 1,
+        'dag_id': ti.dag_id,
+        'run_id': ti.run_id,
+        'task_id': ti.task_id,
+        'task_instance_id': str(ti.id),
+        'try_number': ti.try_number,
+        'started_at': ti.start_date.isoformat(),
+        'completed_at': datetime.now(timezone.utc).isoformat(),
+        'dag_version_id': str(ti.dag_version_id),
+    }
+
+
+def dashboard_snowflake_connection():
+    from snowflake.connector import connect
+
+    hook = SnowflakeHook(snowflake_conn_id='snowflake_conn')
+    # This provider's get_conn() does not forward transport timeout kwargs.
+    # Reuse its auth configuration while bounding this export connection only.
+    options = hook._get_conn_params()
+    options.update(login_timeout=30, network_timeout=60, socket_timeout=30)
+    return connect(**options)
 
 
 def refresh_raw_tables(
@@ -149,7 +176,7 @@ def movie_analytics_pipeline():
             stage=TMDB_SNOWFLAKE_STAGE,
         )
 
-    @task.bash(env=DBT_ENV, append_env=True)
+    @task.bash(env=DBT_ENV, append_env=True, output_processor=dbt_success_receipt)
     def dbt_build() -> str:
         return (
             f"/opt/dbt_venv/bin/dbt build --full-refresh "
@@ -157,6 +184,23 @@ def movie_analytics_pipeline():
             f"--profiles-dir {DBT_PROFILES_DIR} "
             "--target dev"
         )
+
+    @task(execution_timeout=timedelta(minutes=10))
+    def export_dashboard_bundle(dbt_receipt: dict) -> dict:
+        from publish_dashboard import export_and_publish
+
+        context = get_current_context()
+        connection = dashboard_snowflake_connection()
+        try:
+            return export_and_publish(connection, context['dag'].dag_id, context['run_id'], dbt_receipt)
+        finally:
+            connection.close()
+
+    @task
+    def dispatch_dashboard_pages(publication: dict) -> dict:
+        from publish_dashboard import dispatch_from_environment
+
+        return dispatch_from_environment(publication)
 
     imdb_upload = extract_and_upload_imdb()
     imdb_raw = load_imdb_raw()
@@ -170,7 +214,10 @@ def movie_analytics_pipeline():
     imdb_upload >> imdb_raw
     tmdb_now_playing >> tmdb_details
     [tmdb_genres, tmdb_details] >> tmdb_upload >> tmdb_raw
-    [imdb_raw, tmdb_raw] >> dbt_build()
+    build = dbt_build()
+    publication = export_dashboard_bundle(build)
+    [imdb_raw, tmdb_raw] >> build >> publication
+    dispatch_dashboard_pages(publication)
 
 
 movie_analytics_pipeline()

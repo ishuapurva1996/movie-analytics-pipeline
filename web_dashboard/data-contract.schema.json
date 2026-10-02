@@ -1,0 +1,726 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ishuapurva1996.github.io/movie-analytics-pipeline/data-contract.schema.json",
+  "title": "Movie dashboard public bundle v1",
+  "description": "Bounded public analytics only. Semantic reconciliation, finite-number checks, deterministic ordering and 2 MiB size limits are enforced by the exporter. Synthetic fixtures must never be published as production data.",
+  "type": "object",
+  "properties": {
+    "schema_version": {
+      "type": "integer",
+      "const": 1
+    },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "bundle_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "warehouse_completed_at": {
+          "type": "string",
+          "format": "date-time",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d+)?Z$"
+        },
+        "exported_at": {
+          "type": "string",
+          "format": "date-time",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d+)?Z$"
+        },
+        "tmdb_capture_dates": {
+          "type": "object",
+          "properties": {
+            "US": {
+              "type": "string",
+              "format": "date",
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+            },
+            "IN": {
+              "type": "string",
+              "format": "date",
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+            }
+          },
+          "required": [
+            "US",
+            "IN"
+          ],
+          "additionalProperties": false
+        },
+        "imdb_capture_date": {
+          "type": "null",
+          "description": "IMDb ingestion does not record a reliable capture timestamp."
+        },
+        "synthetic": {
+          "type": "boolean"
+        },
+        "sources": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "enum": [
+                  "IMDb",
+                  "TMDB"
+                ]
+              },
+              "url": {
+                "type": "string",
+                "format": "uri",
+                "pattern": "^https://"
+              }
+            },
+            "required": [
+              "name",
+              "url"
+            ],
+            "additionalProperties": false
+          },
+          "maxItems": 2
+        },
+        "metric_definitions": {
+          "type": "object",
+          "properties": {
+            "overview": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 500
+            },
+            "ratings": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 500
+            },
+            "genres": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 500
+            },
+            "eras": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 500
+            },
+            "top_movies": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 500
+            },
+            "people": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 500
+            },
+            "now_playing": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 500
+            }
+          },
+          "required": [
+            "overview",
+            "ratings",
+            "genres",
+            "eras",
+            "top_movies",
+            "people",
+            "now_playing"
+          ],
+          "additionalProperties": false
+        },
+        "limitations": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 500
+          },
+          "maxItems": 20
+        }
+      },
+      "required": [
+        "bundle_id",
+        "warehouse_completed_at",
+        "exported_at",
+        "tmdb_capture_dates",
+        "imdb_capture_date",
+        "synthetic",
+        "sources",
+        "metric_definitions",
+        "limitations"
+      ],
+      "additionalProperties": false
+    },
+    "overview": {
+      "type": "object",
+      "properties": {
+        "total_movies": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "rated_movies": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "avg_rating": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0,
+          "maximum": 10
+        },
+        "avg_runtime_minutes": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 40,
+          "maximum": 300
+        },
+        "highest_rated_movie": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/movie"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "most_voted_movie": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/movie"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "total_movies",
+        "rated_movies",
+        "avg_rating",
+        "avg_runtime_minutes",
+        "highest_rated_movie",
+        "most_voted_movie"
+      ],
+      "additionalProperties": false
+    },
+    "ratings": {
+      "type": "object",
+      "properties": {
+        "population_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "bins": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "bracket": {
+                "type": "string",
+                "enum": [
+                  "0-1",
+                  "1-2",
+                  "2-3",
+                  "3-4",
+                  "4-5",
+                  "5-6",
+                  "6-7",
+                  "7-8",
+                  "8-9",
+                  "9-10"
+                ]
+              },
+              "order": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9
+              },
+              "movie_count": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "percentage": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 100
+              }
+            },
+            "required": [
+              "bracket",
+              "order",
+              "movie_count",
+              "percentage"
+            ],
+            "additionalProperties": false
+          },
+          "maxItems": 10
+        }
+      },
+      "required": [
+        "population_count",
+        "bins"
+      ],
+      "additionalProperties": false
+    },
+    "genres": {
+      "type": "object",
+      "properties": {
+        "ratings": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "genre": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 500
+              },
+              "avg_rating": {
+                "type": [
+                  "number",
+                  "null"
+                ],
+                "minimum": 0,
+                "maximum": 10
+              }
+            },
+            "required": [
+              "genre",
+              "avg_rating"
+            ],
+            "additionalProperties": false
+          },
+          "maxItems": 1000
+        },
+        "runtimes": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "genre": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 500
+              },
+              "avg_runtime_minutes": {
+                "type": [
+                  "number",
+                  "null"
+                ],
+                "minimum": 40,
+                "maximum": 300
+              }
+            },
+            "required": [
+              "genre",
+              "avg_runtime_minutes"
+            ],
+            "additionalProperties": false
+          },
+          "maxItems": 1000
+        }
+      },
+      "required": [
+        "ratings",
+        "runtimes"
+      ],
+      "additionalProperties": false
+    },
+    "eras": {
+      "type": "object",
+      "properties": {
+        "counts": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "decade": {
+                "type": "string",
+                "pattern": "^(189|19\\d|20[0-2])0s$"
+              },
+              "movie_count": {
+                "type": "integer",
+                "minimum": 0
+              }
+            },
+            "required": [
+              "decade",
+              "movie_count"
+            ],
+            "additionalProperties": false
+          },
+          "maxItems": 14
+        },
+        "ratings": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "decade": {
+                "type": "string",
+                "pattern": "^(189|19\\d|20[0-2])0s$"
+              },
+              "avg_rating": {
+                "type": [
+                  "number",
+                  "null"
+                ],
+                "minimum": 0,
+                "maximum": 10
+              }
+            },
+            "required": [
+              "decade",
+              "avg_rating"
+            ],
+            "additionalProperties": false
+          },
+          "maxItems": 14
+        },
+        "top_years": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "rank": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 10
+              },
+              "year": {
+                "type": "integer"
+              },
+              "avg_rating": {
+                "type": [
+                  "number",
+                  "null"
+                ],
+                "minimum": 0,
+                "maximum": 10
+              },
+              "movie_count": {
+                "type": "integer",
+                "minimum": 5
+              }
+            },
+            "required": [
+              "rank",
+              "year",
+              "avg_rating",
+              "movie_count"
+            ],
+            "additionalProperties": false
+          },
+          "maxItems": 10
+        }
+      },
+      "required": [
+        "counts",
+        "ratings",
+        "top_years"
+      ],
+      "additionalProperties": false
+    },
+    "top_movies": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/ranked_movie"
+      },
+      "maxItems": 10
+    },
+    "people": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "role": {
+            "type": "string",
+            "enum": [
+              "actor",
+              "actress",
+              "archive_footage",
+              "casting_director",
+              "cinematographer",
+              "composer",
+              "director",
+              "editor",
+              "producer",
+              "production_designer",
+              "writer"
+            ]
+          },
+          "rank": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 20
+          },
+          "person_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "name": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 2000
+          },
+          "movie_count": {
+            "type": "integer",
+            "minimum": 3
+          },
+          "avg_rating": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "minimum": 0,
+            "maximum": 10
+          }
+        },
+        "required": [
+          "role",
+          "rank",
+          "person_id",
+          "name",
+          "movie_count",
+          "avg_rating"
+        ],
+        "additionalProperties": false
+      },
+      "maxItems": 220
+    },
+    "now_playing": {
+      "type": "object",
+      "properties": {
+        "latest_snapshot_date": {
+          "type": "string",
+          "format": "date",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+        },
+        "regions": {
+          "type": "object",
+          "properties": {
+            "US": {
+              "$ref": "#/$defs/region"
+            },
+            "IN": {
+              "$ref": "#/$defs/region"
+            }
+          },
+          "required": [
+            "US",
+            "IN"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "latest_snapshot_date",
+        "regions"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "required": [
+    "schema_version",
+    "metadata",
+    "overview",
+    "ratings",
+    "genres",
+    "eras",
+    "top_movies",
+    "people",
+    "now_playing"
+  ],
+  "additionalProperties": false,
+  "$defs": {
+    "movie": {
+      "type": "object",
+      "properties": {
+        "movie_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "title": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "maxLength": 2000
+        },
+        "rating": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0,
+          "maximum": 10
+        },
+        "votes": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0
+        }
+      },
+      "required": [
+        "movie_id",
+        "title",
+        "rating",
+        "votes"
+      ],
+      "additionalProperties": false
+    },
+    "ranked_movie": {
+      "type": "object",
+      "properties": {
+        "rank": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 10
+        },
+        "movie_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "title": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "maxLength": 2000
+        },
+        "rating": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0,
+          "maximum": 10
+        },
+        "votes": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0
+        }
+      },
+      "required": [
+        "rank",
+        "movie_id",
+        "title",
+        "rating",
+        "votes"
+      ],
+      "additionalProperties": false
+    },
+    "recommendation": {
+      "type": "object",
+      "properties": {
+        "rank": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 5
+        },
+        "movie_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "title": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "maxLength": 2000
+        },
+        "release_date": {
+          "anyOf": [
+            {
+              "type": "string",
+              "format": "date",
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "overview": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "maxLength": 2000
+        },
+        "rating": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0,
+          "maximum": 10
+        },
+        "votes": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "popularity": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0
+        }
+      },
+      "required": [
+        "rank",
+        "movie_id",
+        "title",
+        "release_date",
+        "overview",
+        "rating",
+        "votes",
+        "popularity"
+      ],
+      "additionalProperties": false
+    },
+    "region": {
+      "type": "object",
+      "properties": {
+        "movie_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "recommendations": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/recommendation"
+          },
+          "maxItems": 5
+        }
+      },
+      "required": [
+        "movie_count",
+        "recommendations"
+      ],
+      "additionalProperties": false
+    }
+  }
+}

@@ -18,12 +18,14 @@ x-airflow-common:
     PYTHONPATH: /opt/airflow/project/scripts
     TMDB_OUTPUT_DIR: /opt/airflow/project/scripts/output_tmdb
     IMDB_OUTPUT_DIR: /opt/airflow/project/scripts/output_imbd
+    DASHBOARD_SCHEMA_PATH: /opt/airflow/project/web_dashboard/data-contract.schema.json
   volumes:
     - ./dags:/opt/airflow/dags
     - ./logs:/opt/airflow/logs
     - ./scripts:/opt/airflow/project/scripts
     - ./movie_dbt:/opt/airflow/project/movie_dbt
     - ./airflow/dbt_profiles:/opt/airflow/dbt_profiles:ro
+    - ./web_dashboard/data-contract.schema.json:/opt/airflow/project/web_dashboard/data-contract.schema.json:ro
     - ${HOME}/.aws:/home/airflow/.aws:ro
   user: "${AIRFLOW_UID:-50000}:0"
   depends_on:

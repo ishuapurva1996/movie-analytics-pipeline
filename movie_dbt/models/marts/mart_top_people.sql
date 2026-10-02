@@ -44,7 +44,7 @@ rank_by_job AS (
         JOB_ROLE,
         person_rating,
         movie_count,
-        ROW_NUMBER() OVER (PARTITION BY JOB_ROLE ORDER BY person_rating DESC) AS rn
+        ROW_NUMBER() OVER (PARTITION BY JOB_ROLE ORDER BY person_rating DESC NULLS LAST, PERSON_ID ASC) AS rn
     FROM avg_rating_by_job
 ),
 dim_person AS (
@@ -64,4 +64,3 @@ INNER JOIN DIM_PERSON p
 ON p.PERSON_ID = r.PERSON_ID
 WHERE rn <= 20
 ORDER BY job_role ASC, rn ASC
-    

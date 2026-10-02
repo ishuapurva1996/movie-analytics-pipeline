@@ -1,12 +1,81 @@
 import unittest
+from datetime import timedelta
+from types import SimpleNamespace
 from unittest.mock import Mock, call, patch
 
+from airflow.exceptions import AirflowException
+from airflow.sdk.exceptions import AirflowTaskTimeout
 import pendulum
 
 import movie_pipeline
 
 
 class AirflowDagConfigurationTests(unittest.TestCase):
+    def test_publication_waits_for_successful_dbt_and_dispatch_reuses_export(self):
+        dag = movie_pipeline.movie_analytics_pipeline()
+        self.assertEqual(dag.max_active_runs, 1)
+        self.assertEqual(len(dag.tasks), 10)
+        export = dag.get_task('export_dashboard_bundle')
+        dispatch = dag.get_task('dispatch_dashboard_pages')
+        self.assertEqual(export.upstream_task_ids, {'dbt_build'})
+        self.assertEqual(dispatch.upstream_task_ids, {'export_dashboard_bundle'})
+        self.assertEqual(export.trigger_rule.value, 'all_success')
+        self.assertEqual(dispatch.trigger_rule.value, 'all_success')
+        self.assertEqual(export.execution_timeout, timedelta(minutes=10))
+        self.assertEqual(export.op_args[0].operator.task_id, 'dbt_build')
+
+    def test_dbt_receipt_is_returned_only_after_command_success(self):
+        ti = SimpleNamespace(dag_id='movie_analytics_pipeline', run_id='current', task_id='dbt_build',
+                             id='task-instance-id', try_number=2, dag_version_id='version-id',
+                             start_date=pendulum.now('UTC').subtract(minutes=1))
+        context = {'ti': ti}
+        for exit_code in (0, 1, 99):
+            build = movie_pipeline.movie_analytics_pipeline().get_task('dbt_build')
+            result = SimpleNamespace(exit_code=exit_code, output='private dbt stdout must not enter receipt')
+            with (patch.object(build, 'render_template_fields'), patch.object(build, 'get_env', return_value={}),
+                  patch.object(build, '_run_inline_command', return_value=result),
+                  patch.object(movie_pipeline, 'get_current_context', return_value=context),
+                  patch.object(build, 'output_processor', wraps=build.output_processor) as processor):
+                if exit_code:
+                    with self.assertRaises(AirflowException):
+                        build.execute(context)
+                    processor.assert_not_called()
+                else:
+                    receipt = build.execute(context)
+                    processor.assert_called_once()
+                    self.assertEqual(receipt['task_instance_id'], 'task-instance-id')
+                    self.assertEqual(receipt['run_id'], 'current')
+                    self.assertEqual(receipt['dag_id'], 'movie_analytics_pipeline')
+                    self.assertEqual(receipt['task_id'], 'dbt_build')
+                    self.assertEqual(receipt['try_number'], 2)
+                    self.assertEqual(receipt['dag_version_id'], 'version-id')
+                    self.assertEqual(pendulum.parse(receipt['started_at']), ti.start_date)
+                    self.assertGreaterEqual(pendulum.parse(receipt['completed_at']), ti.start_date)
+                    self.assertNotIn('stdout', str(receipt))
+                    self.assertLess(len(str(receipt)), 1024)
+
+    def test_export_connection_bounds_transport_without_changing_raw_hook(self):
+        hook = Mock()
+        hook._get_conn_params.return_value = {'account': 'example', 'user': 'example', 'password': 'example'}
+        with (patch.object(movie_pipeline, 'SnowflakeHook', return_value=hook),
+              patch('snowflake.connector.connect') as connect):
+            self.assertIs(movie_pipeline.dashboard_snowflake_connection(), connect.return_value)
+        connect.assert_called_once_with(account='example', user='example', password='example',
+                                        login_timeout=30, network_timeout=60, socket_timeout=30)
+
+    def test_export_passes_receipt_and_closes_connection_on_task_timeout(self):
+        export = movie_pipeline.movie_analytics_pipeline().get_task('export_dashboard_bundle')
+        connection = Mock()
+        receipt = {'receipt': 'success'}
+        context = {'dag': SimpleNamespace(dag_id='movie_analytics_pipeline'), 'run_id': 'current'}
+        with (patch.object(movie_pipeline, 'dashboard_snowflake_connection', return_value=connection),
+              patch.object(movie_pipeline, 'get_current_context', return_value=context),
+              patch('publish_dashboard.export_and_publish', side_effect=AirflowTaskTimeout('bounded task')) as publish):
+            with self.assertRaises(AirflowTaskTimeout):
+                export.python_callable(receipt)
+        publish.assert_called_once_with(connection, 'movie_analytics_pipeline', 'current', receipt)
+        connection.close.assert_called_once()
+
     def test_start_date_is_not_in_the_future(self):
         dag = movie_pipeline.movie_analytics_pipeline()
 
@@ -132,7 +201,9 @@ class AirflowDagConfigurationTests(unittest.TestCase):
         dag = movie_pipeline.movie_analytics_pipeline()
         command = dag.get_task("dbt_build").python_callable()
 
-        self.assertIn("--full-refresh", command.split())
+        self.assertEqual(command, '/opt/dbt_venv/bin/dbt build --full-refresh '
+                         '--project-dir /opt/airflow/project/movie_dbt '
+                         '--profiles-dir /opt/airflow/dbt_profiles --target dev')
 
 
 if __name__ == "__main__":

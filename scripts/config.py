@@ -39,7 +39,7 @@ def tmdb_headers():
 
 
 def s3_bucket_name():
-    return os.getenv("S3_BUCKET_NAME", "movie-pipeline-landing")
+    return required_env("S3_BUCKET_NAME")
 
 
 def tmdb_output_dir():

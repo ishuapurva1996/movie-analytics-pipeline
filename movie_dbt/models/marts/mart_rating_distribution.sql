@@ -14,7 +14,7 @@ WITH FCT_MOVIE_RATINGS AS (
             WHEN COALESCE(imdb_avg_rating, tmdb_avg_rating) >= 8 AND COALESCE(imdb_avg_rating, tmdb_avg_rating) < 9  THEN '8-9'
             WHEN COALESCE(imdb_avg_rating, tmdb_avg_rating) >= 9 AND COALESCE(imdb_avg_rating, tmdb_avg_rating) <= 10  THEN '9-10'
         END AS rating_bracket,
-        FLOOR(COALESCE(imdb_avg_rating, tmdb_avg_rating)) AS bucket_order
+        LEAST(9, FLOOR(COALESCE(imdb_avg_rating, tmdb_avg_rating))) AS bucket_order
     FROM {{ ref('fct_movie_ratings') }}
     WHERE (IMDB_AVG_RATING IS NOT NULL OR TMDB_AVG_RATING IS NOT NULL)
     AND (IMDB_NUM_OF_VOTES >= 1000 OR TMDB_NUM_OF_VOTES >= 500)

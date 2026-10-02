@@ -1,0 +1,183 @@
+{
+  "schema_version": 1,
+  "metadata": {
+    "bundle_id": "synthetic-fixture-v1-not-production",
+    "warehouse_completed_at": "2026-10-01T18:00:00Z",
+    "exported_at": "2026-10-01T18:05:00Z",
+    "tmdb_capture_dates": {
+      "US": "2026-10-01",
+      "IN": "2026-10-01"
+    },
+    "imdb_capture_date": null,
+    "synthetic": true,
+    "sources": [
+      {
+        "name": "IMDb",
+        "url": "https://developer.imdb.com/non-commercial-datasets/"
+      },
+      {
+        "name": "TMDB",
+        "url": "https://www.themoviedb.org"
+      }
+    ],
+    "metric_definitions": {
+      "overview": "Synthetic test values. Catalog includes movie and TV-movie titles plus TMDB-only titles; adult content is not excluded. Average title rating is unweighted; eligible runtime is 40–300 minutes.",
+      "ratings": "IMDb 1,000+ votes or TMDB 500+ votes; IMDb rating preferred. Brackets include their lower edge; 9–10 includes exactly 10. Percentages use this qualifying population.",
+      "genres": "Rating: 1,000+ votes on either source; IMDb rating preferred. Runtime: 40–300 minutes. Each multi-genre title contributes to each genre; source genre vocabularies are not harmonized.",
+      "eras": "Counts: runtime 40–300 minutes, years 1890–2029. Rating vote floors: 20 before 1900, 50 before 1930, 100 before 1950, 500 before 1970, 1,000 before 1990, 10,000 thereafter, using IMDb votes when available. Top years require at least five qualifying titles.",
+      "top_movies": "100,000+ votes on either source; IMDb rating preferred. Displayed vote count independently prefers IMDb; it can be below the eligibility threshold.",
+      "people": "IMDb principal credits for films with 100,000+ votes on either source; IMDb rating preferred. Minimum films: actor/actress/editor/archive_footage/casting_director 5; producer/production_designer/cinematographer/composer/writer 4; director 3. Not a full filmography or individual performance score.",
+      "now_playing": "IMDb 10,000+ votes or TMDB 1,000+ votes; IMDb rating preferred. US/IN are exhibition markets, not nationality. A film can be in both. Capture dates are extractor-local dates, not complete-build timestamps."
+    },
+    "limitations": [
+      "SYNTHETIC TEST FIXTURE — no values describe real films, people, or warehouse output. Never use as a production fallback.",
+      "IMDb capture date is unavailable. Current TMDB enrichment covers the US/IN now-playing extract only.",
+      "Genre and era cohorts differ from the full catalog. Ranked lists are truncated. Source ratings and votes are independently preferred, so they can come from different providers."
+    ]
+  },
+  "overview": {
+    "total_movies": 12,
+    "rated_movies": 10,
+    "avg_rating": 7.8,
+    "avg_runtime_minutes": 112.5,
+    "highest_rated_movie": {
+      "movie_id": "synthetic-a",
+      "title": "Synthetic Aurora",
+      "rating": 10,
+      "votes": 150000
+    },
+    "most_voted_movie": {
+      "movie_id": "synthetic-b",
+      "title": "Synthetic Beacon",
+      "rating": 9.9,
+      "votes": 180000
+    }
+  },
+  "ratings": {
+    "population_count": 5,
+    "bins": [
+      {
+        "bracket": "7-8",
+        "order": 7,
+        "movie_count": 3,
+        "percentage": 60
+      },
+      {
+        "bracket": "9-10",
+        "order": 9,
+        "movie_count": 2,
+        "percentage": 40
+      }
+    ]
+  },
+  "genres": {
+    "ratings": [
+      {
+        "genre": "Synthetic Adventure",
+        "avg_rating": 8.8
+      },
+      {
+        "genre": "Synthetic Drama",
+        "avg_rating": 7.2
+      }
+    ],
+    "runtimes": [
+      {
+        "genre": "Synthetic Adventure",
+        "avg_runtime_minutes": 125
+      },
+      {
+        "genre": "Synthetic Drama",
+        "avg_runtime_minutes": 100
+      }
+    ]
+  },
+  "eras": {
+    "counts": [
+      {
+        "decade": "1990s",
+        "movie_count": 5
+      },
+      {
+        "decade": "2020s",
+        "movie_count": 7
+      }
+    ],
+    "ratings": [
+      {
+        "decade": "1990s",
+        "avg_rating": 8
+      },
+      {
+        "decade": "2020s",
+        "avg_rating": 7.6
+      }
+    ],
+    "top_years": [
+      {
+        "rank": 1,
+        "year": 1995,
+        "avg_rating": 8,
+        "movie_count": 5
+      }
+    ]
+  },
+  "top_movies": [
+    {
+      "rank": 1,
+      "movie_id": "synthetic-a",
+      "title": "Synthetic Aurora",
+      "rating": 10,
+      "votes": 150000
+    },
+    {
+      "rank": 2,
+      "movie_id": "synthetic-b",
+      "title": "Synthetic Beacon",
+      "rating": 9.9,
+      "votes": 180000
+    }
+  ],
+  "people": [
+    {
+      "role": "actor",
+      "rank": 1,
+      "person_id": "synthetic-person-a",
+      "name": "Synthetic Actor A",
+      "movie_count": 5,
+      "avg_rating": 8.5
+    },
+    {
+      "role": "director",
+      "rank": 1,
+      "person_id": "synthetic-person-b",
+      "name": "Synthetic Director B",
+      "movie_count": 3,
+      "avg_rating": 8.4
+    }
+  ],
+  "now_playing": {
+    "latest_snapshot_date": "2026-10-01",
+    "regions": {
+      "US": {
+        "movie_count": 2,
+        "recommendations": [
+          {
+            "rank": 1,
+            "movie_id": "synthetic-a",
+            "title": "Synthetic Aurora",
+            "release_date": "2026-09-01",
+            "overview": "An invented story used solely to test the dashboard.",
+            "rating": 10,
+            "votes": 150000,
+            "popularity": 12.5
+          }
+        ]
+      },
+      "IN": {
+        "movie_count": 1,
+        "recommendations": []
+      }
+    }
+  }
+}
