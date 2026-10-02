@@ -20,7 +20,7 @@ SELECT
     n.now_playing_popularity,
     r.avg_rating,
     r.num_of_votes,
-    ROW_NUMBER() OVER(PARTITION BY n.tmdb_region ORDER BY r.avg_rating DESC, r.num_of_votes DESC, n.now_playing_popularity DESC) AS recommendation_rank
+    ROW_NUMBER() OVER(PARTITION BY n.tmdb_region ORDER BY r.avg_rating DESC NULLS LAST, r.num_of_votes DESC NULLS LAST, n.now_playing_popularity DESC NULLS LAST, n.movie_id ASC) AS recommendation_rank
 FROM FCT_NOW_PLAYING n 
 INNER JOIN rated_movies r
     ON n.movie_id = r.movie_id

@@ -16,7 +16,7 @@ rank_movie AS (
         TMDB_NUM_OF_VOTES,
         avg_rating,
         num_of_votes,
-        ROW_NUMBER() OVER (ORDER BY avg_rating DESC, num_of_votes DESC) AS rn
+        ROW_NUMBER() OVER (ORDER BY avg_rating DESC NULLS LAST, num_of_votes DESC NULLS LAST, movie_id ASC) AS rn
     FROM rated_movies
 ),
 DIM_MOVIES AS (
