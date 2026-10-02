@@ -1,0 +1,100 @@
+version: 2
+
+models:
+  - name: dim_movies
+    columns:
+      - name: movie_id
+        data_tests:
+          - not_null
+          - unique
+      - name: movie_name
+        data_tests:
+          - not_null
+      - name: content_type
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['movie', 'tvMovie', 'tmdb_movie']
+
+  - name: dim_person
+    columns:
+      - name: person_id
+        data_tests:
+          - not_null
+          - unique
+      - name: person_name
+        data_tests:
+          - not_null
+
+  - name: dim_genre
+    columns:
+      - name: genre_id
+        data_tests:
+          - not_null
+          - unique
+      - name: genre_name
+        data_tests:
+          - not_null
+          - unique
+
+  - name: bridge_movie_genres
+    columns:
+      - name: movie_id
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_movies')
+                field: movie_id
+      - name: genre_name
+        data_tests:
+          - not_null
+      - name: genre_source
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['imdb', 'tmdb']
+
+  - name: bridge_movie_people
+    columns:
+      - name: movie_id
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_movies')
+                field: movie_id
+      - name: person_id
+        data_tests:
+          - not_null
+
+  - name: fct_movie_ratings
+    columns:
+      - name: movie_id
+        data_tests:
+          - not_null
+          - unique
+          - relationships:
+              arguments:
+                to: ref('dim_movies')
+                field: movie_id
+
+  - name: fct_now_playing
+    columns:
+      - name: movie_id
+        data_tests:
+          - not_null
+      - name: tmdb_id
+        data_tests:
+          - not_null
+      - name: movie_name
+        data_tests:
+          - not_null
+      - name: tmdb_region
+        data_tests:
+          - not_null
+      - name: snapshot_date
+        data_tests:
+          - not_null

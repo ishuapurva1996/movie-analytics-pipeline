@@ -1,0 +1,105 @@
+version: 2
+
+models:
+  - name: stg_imdb_name_basics
+    columns:
+      - name: person_id
+        data_tests:
+          - not_null
+          - unique
+      - name: primary_name
+        data_tests:
+          - not_null
+
+  - name: stg_imdb_title_akas
+    columns:
+      - name: imdb_id
+        data_tests:
+          - not_null
+      - name: alternate_title_order
+        data_tests:
+          - not_null
+      - name: alternate_title
+        data_tests:
+          - not_null
+
+  - name: stg_imdb_title_basics
+    columns:
+      - name: imdb_id
+        data_tests:
+          - not_null
+          - unique
+      - name: content_type
+        data_tests:
+          - not_null
+      - name: primary_title
+        data_tests:
+          - not_null
+
+  - name: stg_imdb_title_crew
+    columns:
+      - name: imdb_id
+        data_tests:
+          - not_null
+          - unique
+
+  - name: stg_imdb_title_principals
+    columns:
+      - name: imdb_id
+        data_tests:
+          - not_null
+      - name: principal_order
+        data_tests:
+          - not_null
+      - name: person_id
+        data_tests:
+          - not_null
+
+  - name: stg_imdb_title_ratings
+    columns:
+      - name: imdb_id
+        data_tests:
+          - not_null
+          - unique
+      - name: avg_rating
+        data_tests:
+          - not_null
+      - name: num_of_votes
+        data_tests:
+          - not_null
+
+  - name: stg_tmdb_details
+    columns:
+      - name: tmdb_id
+        data_tests:
+          - not_null
+          - unique
+      - name: movie_title
+        data_tests:
+          - not_null
+
+  - name: stg_tmdb_genres
+    columns:
+      - name: tmdb_genre_id
+        data_tests:
+          - not_null
+          - unique
+      - name: genre_name
+        data_tests:
+          - not_null
+          - unique
+
+  - name: stg_tmdb_now_playing
+    columns:
+      - name: tmdb_id
+        data_tests:
+          - not_null
+      - name: movie_title
+        data_tests:
+          - not_null
+      - name: tmdb_region
+        data_tests:
+          - not_null
+      - name: snapshot_date
+        data_tests:
+          - not_null

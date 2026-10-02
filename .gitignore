@@ -1,0 +1,19 @@
+.env
+.env.*
+!.env.example
+.DS_Store
+movie_proj_venv/
+logs/
+**/__pycache__/
+**/*.pyc
+**/.user.yml
+movie_dbt/target/
+movie_dbt/dbt_packages/
+scripts/output_tmdb/
+scripts/output_imbd/
+
+# Local planning artifacts are kept outside this repository.
+/docs/plans/
+/docs/brainstorms/
+/agent_outputs/
+/movie_pipeline_plan.docx

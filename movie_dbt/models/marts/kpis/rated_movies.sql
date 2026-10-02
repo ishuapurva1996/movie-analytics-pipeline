@@ -1,0 +1,4 @@
+SELECT 
+    COUNT(DISTINCT MOVIE_ID) AS Total_Rated_Movies
+FROM {{ ref('fct_movie_ratings') }}
+WHERE (TMDB_AVG_RATING IS NOT NULL OR IMDB_AVG_RATING IS NOT NULL)

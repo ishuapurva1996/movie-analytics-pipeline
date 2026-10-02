@@ -1,0 +1,15 @@
+.env*
+.git
+.gitignore
+.DS_Store
+**/__pycache__/
+**/*.pyc
+logs/
+movie_proj_venv/
+movie_dbt/target/
+movie_dbt/dbt_packages/
+scripts/output_imdb/
+scripts/output_imbd/
+scripts/output_tmdb/
+*.png
+*.docx

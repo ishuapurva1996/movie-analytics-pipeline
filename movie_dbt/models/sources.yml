@@ -1,0 +1,37 @@
+version: 2
+
+sources:
+  - name: imdb
+    database: MOVIE_DB
+    schema: RAW
+    tables: 
+      - name: name_basics
+        identifier: IMDB_NAME_BASICS
+
+      - name: title_akas
+        identifier: IMDB_TITLE_AKAS
+
+      - name: title_basics
+        identifier: IMDB_TITLE_BASICS
+
+      - name: title_crew
+        identifier: IMDB_TITLE_CREW
+
+      - name: title_principals
+        identifier: IMDB_TITLE_PRINCIPALS
+
+      - name: title_ratings
+        identifier: IMDB_TITLE_RATINGS
+  
+  - name: tmdb
+    database: MOVIE_DB
+    schema: RAW
+    tables: 
+      - name: details
+        identifier: TMDB_DETAILS
+
+      - name: genres
+        identifier: TMDB_GENRES
+
+      - name: now_playing
+        identifier: TMDB_NOW_PLAYING
