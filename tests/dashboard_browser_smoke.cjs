@@ -62,15 +62,34 @@ async function main() {
     assert.equal(await page.locator('main section').count(), 6);
     assert.match(await page.locator('#total-movies').textContent(), /12/);
     assert.match(await page.locator('#histogram-population').textContent(), /5/);
-    assert.equal(await page.locator('.js-plotly-plot').count(), 5, 'all five charts use the pinned Plotly runtime');
+    assert.equal(await page.locator('.js-plotly-plot').count(), 9, 'all nine charts use the pinned Plotly runtime');
     assert.equal(await page.evaluate(() => window.Plotly.version), '4.1.1');
+    assert.match(await page.locator('#rating-coverage').textContent(), /83\.3%/);
+    const charts = await page.evaluate(() => Object.fromEntries([...document.querySelectorAll('.js-plotly-plot')].map(node => [node.id, { trace: node.data[0], xRange: node.layout.xaxis.range }])));
+    for (const id of ['top-movies-chart', 'top-years-chart', 'people-chart']) {
+      assert.equal(charts[id].trace.type, 'scatter');
+      assert.equal(charts[id].trace.mode, 'markers+text', 'ranked dots must not connect categories');
+    }
+    assert.deepEqual(charts['top-movies-chart'].xRange, [8, 10]);
+    assert.deepEqual(charts['top-movies-chart'].trace.ids, fixture.top_movies.map(row => row.movie_id));
+    assert.deepEqual(charts['histogram-chart'].trace.y, [0, 0, 0, 0, 0, 0, 0, 60, 0, 40], 'plot shares, including empty bins of a known nonempty population');
+    assert.match(charts['histogram-chart'].trace.customdata[7], /Movies: 3.*Qualifying population: 5/);
+    assert.equal(charts['decade-ratings-chart'].trace.mode, 'lines+markers');
+    assert.equal(charts['decade-ratings-chart'].trace.connectgaps, false);
+    assert.equal(charts['decade-ratings-chart'].trace.y[11], null, 'missing 2000s must break the line');
+    assert.equal(charts['decade-counts-chart'].trace.type, 'bar');
+    assert.equal(charts['decade-counts-chart'].trace.y[11], null, 'missing decade counts must not become zero');
+    assert.equal(await page.locator('#people-role').inputValue(), 'director');
     await page.locator('#people-role').selectOption('director');
     assert.match(await page.locator('#people-table').textContent(), /Synthetic Director B/);
     assert.doesNotMatch(await page.locator('#people-table').textContent(), /Synthetic Actor A/);
     await page.locator('#people-role').selectOption('writer');
     assert.match(await page.locator('#people-table').textContent(), /No people qualify/);
+    assert.match(await page.locator('#people-chart').textContent(), /No qualifying data/);
+    assert.equal(await page.locator('#people-chart .main-svg').count(), 0, 'empty role clears the previous chart');
     await page.locator('#market').selectOption('IN');
     assert.match(await page.locator('#recommendations').textContent(), /No recommendations qualify/);
+    assert.equal(await page.locator('#now-playing-chart .main-svg').count(), 0, 'empty market clears the previous chart');
     assert.match(await page.locator('#market-snapshot').textContent(), /India/);
     assert.equal(requests, 1, 'local controls must not refetch data');
     await page.locator('#market').selectOption('US');
@@ -115,6 +134,36 @@ async function main() {
     assert.match(await page.locator('#average-rating').textContent(), /Unavailable/);
     assert.match(await page.locator('#highest-rated').textContent(), /No qualifying movie/);
     assert.match(await page.locator('#histogram-table').textContent(), /No qualifying movies/);
+    assert.equal(await page.locator('#histogram-chart .main-svg').count(), 0, 'empty population cannot invent a zero histogram');
+
+    const expanded = structuredClone(fixture);
+    expanded.top_movies[1].rating = 7.2;
+    expanded.people = Array.from({ length: 20 }, (_, index) => ({ person_id: `test-director-${index}`, name: `Director ${index}`, role: 'director', rank: index + 1, avg_rating: 9.5 - index * .15, movie_count: 3 }));
+    expanded.people.push({ person_id: 'test-actor', name: 'Actor', role: 'actor', rank: 1, avg_rating: 6.2, movie_count: 5 });
+    await load(expanded);
+    await ready();
+    assert.equal(await page.locator('#people-table tbody tr').count(), 20);
+    const initialPeopleRange = await page.evaluate(() => document.querySelector('#people-chart').layout.xaxis.range);
+    assert.equal(await page.evaluate(() => document.querySelector('#people-chart').data[0].x.length), 10, 'chart shows only ranks 1–10');
+    assert.equal(await page.evaluate(() => document.querySelector('#top-movies-chart').layout.xaxis.range[0]), 7, 'future lower ratings stay visible');
+    await page.locator('#people-role').selectOption('actor');
+    await page.waitForFunction(() => document.querySelector('#people-chart').data?.[0].ids[0] === 'test-actor');
+    assert.deepEqual(await page.evaluate(() => document.querySelector('#people-chart').layout.xaxis.range), initialPeopleRange, 'role selection preserves a shared domain');
+    const zeroCatalog = structuredClone(sparse);
+    zeroCatalog.overview.total_movies = 0;
+    zeroCatalog.overview.rated_movies = 0;
+    await load(zeroCatalog);
+    await ready();
+    assert.match(await page.locator('#rating-coverage').textContent(), /unavailable/);
+
+    const unknownNames = structuredClone(fixture);
+    unknownNames.top_movies.forEach(row => { row.title = null; });
+    unknownNames.people.forEach(row => { row.name = null; });
+    await load(unknownNames);
+    await ready();
+    assert.match(await page.locator('#top-movies-chart .ytick').first().textContent(), /Unavailable/);
+    assert.match(await page.locator('#people-chart .ytick').first().textContent(), /Unavailable/);
+    assert.equal(await page.evaluate(() => document.querySelector('#top-movies-chart').data[0].ids.length), 2, 'same display label keeps distinct movie identities');
 
     const hostile = structuredClone(fixture);
     const attack = '<img src=x onerror="window.__dashboardInjected=1"> & <b>literal</b>';
@@ -156,7 +205,7 @@ async function main() {
     await ready();
     assert.match(await page.locator('#histogram-chart').textContent(), /This chart could not render/);
     assert.doesNotMatch(await page.locator('#histogram-chart').textContent(), /Partial chart content/);
-    assert.equal(await page.locator('.js-plotly-plot').count(), 4, 'one rejected chart does not prevent the other charts rendering');
+    assert.equal(await page.locator('.js-plotly-plot').count(), 8, 'one rejected chart does not prevent the other charts rendering');
     await page.locator('#histogram-table').locator('..').locator('summary').click();
     assert.equal(await page.locator('#histogram-table table').isVisible(), true, 'failed chart keeps its data table available');
     assert.match(await page.locator('#histogram-table').textContent(), /9-10/);
