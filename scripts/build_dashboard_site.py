@@ -13,7 +13,12 @@ import tempfile
 from export_dashboard import MAX_BUNDLE_BYTES, validate_bundle
 
 ROOT = Path(__file__).resolve().parents[1]
-ASSETS = ('index.html', 'css/dashboard.css', 'js/dashboard.js', 'assets/vendor/plotly-basic-4.1.1.min.js', 'assets/vendor/plotly-LICENSE.txt', 'assets/tmdb-logo.svg')
+ASSETS = ('index.html', 'redesign.html', 'css/dashboard.css', 'css/dashboard-redesign.css',
+          'js/dashboard-redesign.js', 'js/dashboard-theme.js',
+          'assets/vendor/plotly-basic-4.1.1.min.js', 'assets/vendor/plotly-LICENSE.txt', 'assets/tmdb-logo.svg')
+# Preserve the original implementation in source; publish the approved design at
+# the site's root and keep its existing preview URL working as an alias.
+SOURCE_ASSETS = {name: ('redesign.html' if name == 'index.html' else name) for name in ASSETS}
 REPOSITORY = 'ishuapurva1996/movie-analytics-pipeline'
 
 
@@ -55,8 +60,9 @@ def build_site(source, output, body, checksum, *, allow_synthetic=False):
         staging = Path(temporary) / 'complete'
         staging.mkdir()
         for name in ASSETS:
-            asset = source / name
-            parts = Path(name).parts
+            source_name = SOURCE_ASSETS[name]
+            asset = source / source_name
+            parts = Path(source_name).parts
             linked = source.is_symlink() or any((source.joinpath(*parts[:n])).is_symlink() for n in range(1, len(parts) + 1))
             if not asset.is_file() or linked:
                 raise SiteError('Missing or symlinked public asset; nothing was deployed.')

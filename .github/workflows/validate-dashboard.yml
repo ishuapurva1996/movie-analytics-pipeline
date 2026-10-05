@@ -40,10 +40,19 @@ jobs:
       - name: Existing ingestion regression tests
         run: python -m unittest discover -s tests -p 'test_pipeline_scripts.py' -v
       - name: JavaScript syntax
-        run: node --check web_dashboard/js/dashboard.js
+        run: |
+          node --check web_dashboard/js/dashboard.js
+          node --check web_dashboard/js/dashboard-redesign.js
+          node --check web_dashboard/js/dashboard-theme.js
       - name: Browser behavior checks
         run: |
           npm install --prefix "$RUNNER_TEMP/browser-check" --no-save playwright@1.58.2
           "$RUNNER_TEMP/browser-check/node_modules/.bin/playwright" install --with-deps chromium
           python -m http.server 8765 --bind 127.0.0.1 --directory web_dashboard > "$RUNNER_TEMP/dashboard-http.log" 2>&1 &
           NODE_PATH="$RUNNER_TEMP/browser-check/node_modules" BASE_URL=http://127.0.0.1:8765 node tests/dashboard_browser_smoke.cjs
+          NODE_PATH="$RUNNER_TEMP/browser-check/node_modules" BASE_URL=http://127.0.0.1:8765 node tests/dashboard_redesign_browser.cjs
+      - name: Approved dashboard at the published site root
+        run: |
+          python scripts/build_dashboard_site.py --bundle tests/fixtures/dashboard/synthetic-dashboard.json --allow-synthetic --output "$RUNNER_TEMP/dashboard-site"
+          python -m http.server 8767 --bind 127.0.0.1 --directory "$RUNNER_TEMP/dashboard-site" > "$RUNNER_TEMP/dashboard-public-http.log" 2>&1 &
+          NODE_PATH="$RUNNER_TEMP/browser-check/node_modules" BASE_URL=http://127.0.0.1:8767 DASHBOARD_ENTRY=index.html node tests/dashboard_theme_browser.cjs

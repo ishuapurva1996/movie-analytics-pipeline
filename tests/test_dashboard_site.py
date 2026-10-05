@@ -49,9 +49,16 @@ class SiteTests(unittest.TestCase):
                 path = source / name
                 path.parent.mkdir(parents=True, exist_ok=True)
                 path.write_text('public asset')
+            (source / 'index.html').write_text('original comparison dashboard')
+            (source / 'redesign.html').write_text('approved movie dashboard')
             (source / '.env').write_text('secret')
             build_site(source, output, self.body, self.digest, allow_synthetic=True)
             self.assertFalse((output / '.env').exists())
+            self.assertEqual((output / 'index.html').read_text(), 'approved movie dashboard')
+            self.assertEqual((output / 'redesign.html').read_text(), 'approved movie dashboard')
+            self.assertFalse((output / 'js/dashboard.js').exists())
+            for name in ('css/dashboard-redesign.css', 'js/dashboard-redesign.js', 'js/dashboard-theme.js'):
+                self.assertTrue((output / name).is_file())
             self.assertEqual((output / 'data/dashboard.json').read_bytes(), self.body)
             before = (output / 'data/dashboard.json').read_bytes()
             with self.assertRaises(SiteError):
@@ -65,7 +72,7 @@ class SiteTests(unittest.TestCase):
             source.mkdir()
             private = root / 'private'
             private.write_text('secret')
-            (source / 'index.html').symlink_to(private)
+            (source / 'redesign.html').symlink_to(private)
             with self.assertRaises(SiteError):
                 build_site(source, root / '_site', self.body, self.digest, allow_synthetic=True)
 
