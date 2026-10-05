@@ -12,6 +12,7 @@ models:
           - not_null
 
   - name: stg_imdb_title_akas
+    description: Excludes News-tagged title identities before downstream movie analysis, including cross-source matches.
     columns:
       - name: imdb_id
         data_tests:
@@ -24,6 +25,7 @@ models:
           - not_null
 
   - name: stg_imdb_title_basics
+    description: Excludes News-tagged title identities before downstream movie analysis, including cross-source matches.
     columns:
       - name: imdb_id
         data_tests:
@@ -37,6 +39,7 @@ models:
           - not_null
 
   - name: stg_imdb_title_crew
+    description: Excludes News-tagged title identities before downstream movie analysis, including cross-source matches.
     columns:
       - name: imdb_id
         data_tests:
@@ -44,6 +47,7 @@ models:
           - unique
 
   - name: stg_imdb_title_principals
+    description: Excludes News-tagged title identities before downstream movie analysis, including cross-source matches.
     columns:
       - name: imdb_id
         data_tests:
@@ -56,6 +60,7 @@ models:
           - not_null
 
   - name: stg_imdb_title_ratings
+    description: Excludes News-tagged title identities before downstream movie analysis, including cross-source matches.
     columns:
       - name: imdb_id
         data_tests:
@@ -69,6 +74,7 @@ models:
           - not_null
 
   - name: stg_tmdb_details
+    description: Excludes News-tagged title identities before downstream movie analysis, including cross-source matches.
     columns:
       - name: tmdb_id
         data_tests:
@@ -79,6 +85,7 @@ models:
           - not_null
 
   - name: stg_tmdb_genres
+    description: TMDB genre dictionary excluding News.
     columns:
       - name: tmdb_genre_id
         data_tests:
@@ -90,6 +97,7 @@ models:
           - unique
 
   - name: stg_tmdb_now_playing
+    description: Excludes News-tagged title identities before downstream movie analysis, including cross-source matches.
     columns:
       - name: tmdb_id
         data_tests:

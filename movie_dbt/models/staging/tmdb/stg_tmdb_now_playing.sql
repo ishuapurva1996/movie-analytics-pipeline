@@ -1,6 +1,13 @@
-WITH tmdb_now_playing AS (
+WITH excluded_news_titles AS (
+    {{ news_title_ids() }}
+),
+tmdb_now_playing AS (
     SELECT *
-    FROM {{ source('tmdb', 'now_playing') }}
+    FROM {{ source('tmdb', 'now_playing') }} AS playing
+    WHERE NOT EXISTS (
+        SELECT 1 FROM excluded_news_titles AS excluded
+        WHERE excluded.tmdb_id = playing.ID
+    )
 ),
 
 deduplicated AS (

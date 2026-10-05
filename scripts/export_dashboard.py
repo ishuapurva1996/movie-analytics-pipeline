@@ -34,7 +34,7 @@ SOURCES = [
     {"name": "TMDB", "url": "https://www.themoviedb.org"},
 ]
 METRIC_DEFINITIONS = {
-    "overview": "Catalog includes movie and TV-movie titles plus TMDB-only titles; adult content is not excluded. Average title rating is unweighted; eligible runtime is 40–300 minutes. Most voted movie uses the preferred vote count, not TMDB popularity.",
+    "overview": "Catalog includes movie and TV-movie titles plus TMDB-only titles; News-tagged titles are excluded in staging, including cross-source matches. Unknown genres are retained; adult content is not excluded. Average title rating is unweighted; eligible runtime is 40–300 minutes. Most voted movie uses the preferred vote count, not TMDB popularity.",
     "ratings": "IMDb 1,000+ votes or TMDB 500+ votes; IMDb rating preferred. Brackets include their lower edge; 9–10 includes exactly 10. Percentages use this qualifying population.",
     "genres": "Rating: 1,000+ votes on either source; IMDb rating preferred. Runtime: 40–300 minutes. Each multi-genre title contributes to each genre; source genre vocabularies are not harmonized.",
     "eras": "Counts: runtime 40–300 minutes, years 1890–2029. Rating vote floors: 20 before 1900, 50 before 1930, 100 before 1950, 500 before 1970, 1,000 before 1990, 10,000 thereafter, using IMDb votes when available. Top years require at least five qualifying titles.",
