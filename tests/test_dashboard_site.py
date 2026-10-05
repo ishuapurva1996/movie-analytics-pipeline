@@ -1,4 +1,5 @@
 import copy
+from contextlib import redirect_stderr
 import hashlib
 import io
 import json
@@ -40,6 +41,18 @@ class SiteTests(unittest.TestCase):
                 raise ClientError({'Error': {'Code': 'NoSuchKey'}}, 'GetObject')
         with self.assertRaisesRegex(SiteError, 'complete Airflow'):
             read_latest(S3(), 'private', 'dashboard/v1')
+
+    def test_production_cli_still_refuses_synthetic_fixtures_in_actions(self):
+        with tempfile.TemporaryDirectory() as directory:
+            output = Path(directory) / 'site'
+            errors = io.StringIO()
+            with patch.dict(os.environ, {'GITHUB_ACTIONS': 'true'}), \
+                    patch.object(sys, 'argv', ['build_dashboard_site.py', '--bundle',
+                        str(ROOT / 'tests/fixtures/dashboard/synthetic-dashboard.json'),
+                        '--allow-synthetic', '--output', str(output)]), redirect_stderr(errors):
+                self.assertEqual(site.main(), 1)
+            self.assertIn('Synthetic fixtures cannot be used for production', errors.getvalue())
+            self.assertFalse(output.exists())
 
     def test_artifact_allowlist_and_failure_preservation(self):
         with tempfile.TemporaryDirectory() as directory:

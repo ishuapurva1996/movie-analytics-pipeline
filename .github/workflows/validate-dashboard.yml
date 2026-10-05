@@ -53,6 +53,16 @@ jobs:
           NODE_PATH="$RUNNER_TEMP/browser-check/node_modules" BASE_URL=http://127.0.0.1:8765 node tests/dashboard_redesign_browser.cjs
       - name: Approved dashboard at the published site root
         run: |
-          python scripts/build_dashboard_site.py --bundle tests/fixtures/dashboard/synthetic-dashboard.json --allow-synthetic --output "$RUNNER_TEMP/dashboard-site"
+          # Use the unit-test seam for a private temporary test site. The
+          # production CLI deliberately refuses synthetic fixtures in Actions.
+          python - <<'PY'
+          import hashlib, os, sys
+          from pathlib import Path
+          sys.path.insert(0, 'scripts')
+          from build_dashboard_site import build_site
+          body = Path('tests/fixtures/dashboard/synthetic-dashboard.json').read_bytes()
+          build_site('web_dashboard', Path(os.environ['RUNNER_TEMP']) / 'dashboard-site',
+                     body, hashlib.sha256(body).hexdigest(), allow_synthetic=True)
+          PY
           python -m http.server 8767 --bind 127.0.0.1 --directory "$RUNNER_TEMP/dashboard-site" > "$RUNNER_TEMP/dashboard-public-http.log" 2>&1 &
           NODE_PATH="$RUNNER_TEMP/browser-check/node_modules" BASE_URL=http://127.0.0.1:8767 DASHBOARD_ENTRY=index.html node tests/dashboard_theme_browser.cjs
