@@ -1,4 +1,7 @@
-WITH tmdb_details AS (
+WITH excluded_news_titles AS (
+    {{ news_title_ids() }}
+),
+tmdb_details AS (
     SELECT * FROM {{ source('tmdb','details')}}
 )
 SELECT 
@@ -19,3 +22,7 @@ SELECT
     VOTE_COUNT AS tmdb_num_votes,
     POSTER_PATH AS tmdb_poster_path
 FROM tmdb_details
+WHERE NOT EXISTS (
+    SELECT 1 FROM excluded_news_titles AS excluded
+    WHERE excluded.tmdb_id = tmdb_details.ID
+)

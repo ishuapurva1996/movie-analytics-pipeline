@@ -30,6 +30,5 @@ AND
     END
 GROUP BY m.RELEASE_YEAR
 HAVING COUNT(DISTINCT m.movie_id) >= 5
-ORDER BY release_yr_avg_rating DESC
-LIMIT 10 
-
+ORDER BY release_yr_avg_rating DESC NULLS LAST, m.RELEASE_YEAR ASC
+LIMIT 10

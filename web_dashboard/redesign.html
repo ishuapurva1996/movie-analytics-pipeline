@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="A closer look at the movie catalog: ratings, genres, eras, principal credits and the current US and India now-playing snapshots.">
+  <meta name="theme-color" content="#090b10">
+  <title>The Movie Observatory · Movie analytics</title>
+  <script src="js/dashboard-theme.js"></script>
+  <link rel="stylesheet" href="css/dashboard.css">
+  <link rel="stylesheet" href="css/dashboard-redesign.css">
+  <script src="assets/vendor/plotly-basic-4.1.1.min.js" defer></script>
+  <script src="js/dashboard-redesign.js?v=20261005-genre-title" defer></script>
+</head>
+<body class="design-comparison">
+  <a class="skip-link" href="#main">Skip to dashboard</a>
+  <header class="masthead">
+    <div class="page-width masthead-inner">
+      <a class="brand" href="#"><svg class="brand-mark" aria-hidden="true" viewBox="0 0 36 36" width="36" height="36"><rect x="4" y="4" width="28" height="28" rx="7" fill="none" stroke="currentColor" stroke-width="1.5"/><circle cx="18" cy="18" r="8" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M4 12h6M4 24h6M26 12h6M26 24h6" stroke="currentColor" stroke-width="1.5"/></svg><span>The Movie<br><strong>Observatory</strong></span></a>
+      <nav class="version-nav" aria-label="Main navigation"><a href="redesign.html" aria-current="page">Dashboard</a></nav>
+      <div class="header-actions"><a class="source-link" href="https://github.com/ishuapurva1996/movie-analytics-pipeline">View the project</a><button id="theme-toggle" class="theme-toggle" type="button" aria-label="Switch to light mode" title="Switch to light mode" hidden><svg class="theme-sun" aria-hidden="true" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M5 5l1.5 1.5M17.5 17.5L19 19M5 19l1.5-1.5M17.5 6.5L19 5"/></svg><svg class="theme-moon" aria-hidden="true" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"><path d="M20 14.5A8.5 8.5 0 0 1 9.5 4a8.5 8.5 0 1 0 10.5 10.5Z"/></svg><span class="theme-toggle-text">Light mode</span></button></div>
+    </div>
+  </header>
+  <main id="main" class="page-width" tabindex="-1">
+    <div class="hero">
+      <div><h1>Cinema, <em>in perspective.</em></h1></div>
+    </div>
+
+    <div id="load-status" class="load-status" role="status" aria-live="polite">Loading movie data…</div>
+    <noscript><p class="notice">Enable JavaScript to load the dashboard. Metric definitions are available in the project’s <a href="https://github.com/ishuapurva1996/movie-analytics-pipeline/blob/main/docs/DASHBOARD_METRICS.md">metrics documentation</a>.</p></noscript>
+    <div id="dashboard" hidden>
+      <div id="synthetic-notice" class="notice notice-test" role="status" hidden>Synthetic test data — these values are invented for validation and do not describe real films or people.</div>
+      <div id="freshness-notice" class="notice notice-stale" role="status" hidden></div>
+      <nav class="section-nav" aria-label="Dashboard sections">
+        <a href="#overview">Overview</a><a href="#ratings">Ratings &amp; genres</a><a href="#eras">Decades</a><a href="#people">People</a><a href="#now-playing">Now playing</a><a href="#methodology">About the data</a>
+      </nav>
+
+      <section id="overview" aria-labelledby="overview-title">
+        <div class="section-heading"><div><h2 id="overview-title">Movies at a glance</h2></div></div>
+        <div class="kpi-grid">
+          <article class="kpi"><p class="kpi-label">Movies in the catalog</p><p id="total-movies" class="kpi-value"></p></article>
+          <article class="kpi"><p class="kpi-label">Movies with a rating</p><p id="rated-movies" class="kpi-value"></p><p class="kpi-note"><span id="rating-coverage"></span></p></article>
+          <article class="kpi"><p class="kpi-label">Average movie rating</p><p id="average-rating" class="kpi-value"></p></article>
+          <article class="kpi"><p class="kpi-label">Average movie length</p><p id="average-runtime" class="kpi-value"></p><p class="kpi-note">Movies 40–300 min long</p></article>
+        </div>
+        <div id="movie-spotlight" class="movie-spotlight" role="region" aria-labelledby="spotlight-title">
+          <div class="spotlight-heading"><h3 id="spotlight-title">Movie highlights</h3></div>
+          <div class="highlight-grid">
+            <article class="highlight"><h4 class="highlight-label">Highest-rated movie</h4><div id="highest-rated"></div></article>
+            <article class="highlight"><h4 class="highlight-label">Movie with the most votes</h4><div id="most-voted"></div></article>
+          </div>
+          <a class="spotlight-link" href="#top-movies">See the top 10 films<span aria-hidden="true"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M5 12h14m-5-5 5 5-5 5"/></svg></span></a>
+        </div>
+      </section>
+
+      <section id="ratings" aria-labelledby="ratings-title">
+        <div class="section-heading"><div><h2 id="ratings-title">Movie ratings and genres</h2></div></div>
+        <article class="panel">
+          <div class="panel-heading"><div><h3 id="distribution-title">Movie ratings</h3><p class="chart-scope">IMDb 1k+ or TMDB 500+ votes</p></div><p id="histogram-population" class="chart-stat"></p></div>
+          <div id="histogram-chart" class="chart" role="img" aria-label="Percentage of movies meeting the vote rules in each rating range. The same values are available in the data table below."></div>
+          <details class="data-disclosure"><summary aria-label="Details and data for rating distribution">Details &amp; data</summary><p class="caption">IMDb 1,000+ votes or TMDB 500+ votes; IMDb rating preferred.</p><p class="caption">Teal marks the most common rating range. Each range includes its lower limit; only 9–10 includes its upper limit. Percentages cover movies meeting the vote rules, not all rated movies.</p><div id="histogram-table"></div></details>
+        </article>
+        <div class="two-column genre-comparisons">
+          <article class="panel"><h3 id="genre-rating-title">Average rating by genre</h3><p class="chart-scope">1,000+ votes on IMDb or TMDB</p><div id="genre-ratings-chart" class="chart" role="img" aria-label="Average movie rating by genre. A data table follows."></div><details class="data-disclosure"><summary aria-label="Details and data for genre ratings">Details &amp; data</summary><p class="caption">1,000+ votes on either source; IMDb rating preferred.</p><div id="genre-ratings-table"></div></details></article>
+          <article class="panel"><h3 id="genre-runtime-title">Average movie length by genre</h3><p class="chart-scope">Movies 40–300 min long</p><div id="genre-runtimes-chart" class="chart" role="img" aria-label="Average movie length in minutes by genre. A data table follows."></div><details class="data-disclosure"><summary aria-label="Details and data for genre runtimes">Details &amp; data</summary><p class="caption">Titles with runtime 40–300 minutes; a separate population.</p><p class="caption">Colored bars mark the highest displayed averages. A title contributes to each of its genres. IMDb and TMDB genre names have not been harmonized. Genre sample sizes and uncertainty estimates are unavailable in these aggregates.</p><div id="genre-runtimes-table"></div></details></article>
+        </div>
+        <article id="top-movies" class="panel ranking-panel" tabindex="-1"><div class="panel-heading"><div><h3 id="movies-title">Top 10 films of all time</h3><p class="chart-scope">100k+ votes on IMDb or TMDB</p></div></div><div id="top-movies-size-key" class="size-key"></div><div id="top-movies-chart" class="chart" role="img" aria-label="Top movies ranked by rating; dot area and color show preferred votes on a focused rating axis."></div><details class="data-disclosure"><summary aria-label="Details and data for top movies">Details &amp; data</summary><p class="caption">Up to ten films with 100,000+ votes on either source; IMDb rating preferred.</p><p class="caption">Focused rating axis; dots show position, not bar length. Ratings are out of 10. Full titles are available in tooltips and the data table.</p><p class="caption">Displayed votes independently prefer IMDb and may be below the eligibility threshold. Ties use preferred votes, then movie ID.</p><p class="caption">Dot area and color represent preferred votes, not statistical confidence. Blue, green and red indicate increasing count bands; the legend shows their cutoffs. Dot area remains proportional to the exact count. Open dots indicate zero or unavailable votes.</p><div id="top-movies-table"></div></details></article>
+      </section>
+
+      <section id="eras" aria-labelledby="eras-title">
+        <div class="section-heading"><div><h2 id="eras-title">Movies through the decades</h2></div></div>
+        <div class="two-column">
+          <article class="panel"><h3 id="decade-count-title">Movies by decade</h3><p class="chart-scope">Movies 40–300 min long · 2020s incomplete</p><div id="decade-counts-chart" class="chart" role="img" aria-label="Movies in this catalog meeting the length and year rules, grouped by decade. A data table follows."></div><details class="data-disclosure"><summary aria-label="Details and data for movie counts by decade">Details &amp; data</summary><p class="caption">Known release year, 1890–2029; runtime 40–300 minutes.</p><p class="caption">Counts describe this catalog, not total worldwide production. The 2020s cover an incomplete decade. The count and rating charts use different qualifying populations. Missing decades are not zero.</p><div id="decade-counts-table"></div></details></article>
+          <article class="panel"><h3 id="decade-rating-title">Average rating by decade</h3><p class="chart-scope">Minimum votes vary by year · 2020s incomplete</p><div id="decade-ratings-chart" class="chart" role="img" aria-label="Average movie rating by decade. A data table follows."></div><details class="data-disclosure"><summary aria-label="Details and data for average ratings by decade">Details &amp; data</summary><p class="caption">Minimum votes depend on the release year; IMDb rating is used first. Movie length is not restricted.</p><div id="decade-ratings-table"></div></details></article>
+        </div>
+        <article class="panel ranking-panel"><div class="panel-heading"><div><h3 id="years-title">Top 10 release years by average movie rating</h3><p class="chart-scope">5+ films meeting the vote rules per year</p></div></div><div id="top-years-size-key" class="size-key"></div><div id="top-years-chart" class="chart" role="img" aria-label="Top release years ranked by average rating; dot area and color show qualifying films, with years treated as categories."></div><details class="data-disclosure"><summary aria-label="Details and data for top release years">Details &amp; data</summary><p class="caption">A ranking of up to ten years, each with at least five qualifying films. This is not a complete time series.</p><p class="caption">Years are ranked categories, not a timeline. The rating axis is focused on this group.</p><p class="caption">Dot area and color represent qualifying film count; their scales are separate from movie votes. Blue, green and red indicate increasing count bands; the legend shows their cutoffs. Dot area remains proportional to the exact count. Open dots indicate zero or unavailable counts.</p><div id="top-years-table"></div></details></article>
+      </section>
+
+      <section id="people" aria-labelledby="people-title">
+        <div class="section-heading"><div><h2 id="people-title">People behind the movies</h2></div></div>
+        <article class="panel"><div class="panel-heading"><div><label class="control-label" for="people-role">Job role</label><select id="people-role"></select></div><p id="people-threshold" class="caption control-context" aria-live="polite"></p></div><h3 id="people-chart-title">Top 10 directors</h3><p class="chart-scope">100k+ votes on IMDb or TMDB</p><div id="people-size-key" class="size-key"></div><div id="people-chart" class="chart" role="img" aria-label="Top ten people in the selected role ranked by average movie rating; dot area and color show distinct qualifying films."></div><details class="data-disclosure"><summary aria-label="Details and data for people in the selected job role">Details &amp; data</summary><p class="caption">Focused rating axis shared across roles. Dots show average movie ratings, not scores for individual people.</p><p class="caption">Up to 20 people per role. Films need 100,000+ votes on either source; IMDb rating preferred. This is not a full filmography or a measure of individual performance. Repeated principal credits can weight a film more than once.</p><p class="caption">Dot area shows the exact number of distinct films meeting the rules. Blue means 1–4 films, green 5–7, and red 8+. These scales stay the same across job roles. They do not measure votes or individual contribution. Open dots indicate zero or unavailable counts.</p><div id="people-table"></div></details></article>
+      </section>
+
+      <section id="now-playing" aria-labelledby="now-playing-title">
+        <div class="section-heading"><div><h2 id="now-playing-title">Now playing</h2></div></div>
+        <div class="market-layout"><div class="market-intro"><label class="control-label" for="market">Country</label><select id="market"><option value="US">United States</option><option value="IN">India</option></select><div id="market-counts" class="market-counts"></div><p id="market-snapshot" class="caption" aria-live="polite"></p></div><div class="market-results"><h3 id="now-playing-chart-title">Top 5 movies in the United States</h3><p class="chart-scope">10k+ IMDb votes or 1k+ TMDB votes</p><div id="now-playing-chart" class="chart" role="img" aria-label="Up to five movies in the selected market ranked by rating, on a zero to ten scale."></div><details class="data-disclosure"><summary>Movie details</summary><p class="caption">Up to five recommendations. IMDb rating preferred; ranked by rating, preferred votes, then TMDB popularity and movie ID. A film can appear in both markets; counts are not additive. Market does not indicate nationality. Availability follows the capture date, not today’s listings.</p><div id="recommendations" aria-live="polite"></div></details></div></div>
+      </section>
+
+      <section id="methodology" aria-labelledby="methodology-title">
+        <div class="section-heading"><div><h2 id="methodology-title">About the data</h2></div></div>
+        <details class="method-detail"><summary>Sources &amp; calculation rules</summary><div class="method-grid"><div><h3>Each chart counts a different group of movies</h3><p>The highest-rated highlight uses films with 100,000+ votes on either source, with IMDb rating preferred. The most-voted highlight uses the largest independently preferred vote count among rated titles.</p><p>The catalog includes IMDb movie and TV-movie records plus current TMDB enrichment. Adult content is not excluded. TMDB enrichment covers the current United States and India now-playing extract, not the full TMDB catalog.</p><p>Ratings prefer IMDb when known and otherwise use TMDB. Vote counts make that choice independently, so a displayed rating and its vote count can come from different sources. Averages give each contributing row equal weight; they are not weighted by votes.</p><p>Role selection changes only the people chart and table. Market selection changes only now-playing recommendations. These aggregates cannot support accurate dashboard-wide year or genre filtering.</p></div><div><h3>Update dates &amp; missing data</h3><p>The warehouse completion time marks a successful build. The export time marks when its bundle was generated. TMDB dates are extractor-local capture dates, not precise timestamps. IMDb capture time is unavailable.</p><p>A warning appears when the warehouse build or either market’s capture is more than eight days old. The pipeline replaces the snapshot; this page does not imply historical changes or trends.</p><p>Unknown values read “Unavailable.” Empty rankings can mean no records qualified. Qualified decade counts, genre averages and ranked lists describe their stated populations.</p></div></div></details>
+        <details class="method-detail"><summary>Source dates</summary><div id="snapshot-details" class="snapshot-details"></div></details>
+        <details class="method-detail" id="era-thresholds"><summary>Minimum votes &amp; how rankings work</summary><p>Decade ratings and top release years use IMDb votes when known, otherwise TMDB votes. These are selected-source thresholds, unlike either-source thresholds elsewhere.</p><div class="table-wrap"><table><caption>Minimum votes by release year</caption><thead><tr><th scope="col">Release year</th><th scope="col">Minimum votes</th></tr></thead><tbody><tr><th scope="row">Before 1900</th><td>20</td></tr><tr><th scope="row">1900–1929</th><td>50</td></tr><tr><th scope="row">1930–1949</th><td>100</td></tr><tr><th scope="row">1950–1969</th><td>500</td></tr><tr><th scope="row">1970–1989</th><td>1,000</td></tr><tr><th scope="row">1990 onward</th><td>10,000</td></tr></tbody></table></div><p>Top years may include qualifying release years outside the displayed decade range. Their rounded mean rating determines rank; ties use release year ascending. People ties use person ID; recommendation ties end with movie ID. These stable tie-breakers do not imply a meaningful difference in quality. Tiny differences between averages should not be treated as evidence of a meaningful quality gap; uncertainty estimates are not available.</p></details>
+        <details class="method-detail"><summary>How each number is calculated</summary><dl id="metric-definitions"></dl></details>
+        <details class="method-detail"><summary>What this data includes &amp; leaves out</summary><ul id="limitations"></ul></details>
+      </section>
+    </div>
+  </main>
+  <footer class="footer"><div class="page-width footer-inner"><div><p class="footer-title">The Movie Observatory</p><a href="https://github.com/ishuapurva1996/movie-analytics-pipeline">Explore the source &amp; methodology</a></div><div class="credits"><p class="credit-heading">Data sources &amp; credits</p><p>Movie data from <a href="https://developer.imdb.com/non-commercial-datasets/">IMDb datasets</a> and <a href="https://www.themoviedb.org">The Movie Database</a>.</p><a href="https://www.themoviedb.org" class="tmdb-credit"><img src="assets/tmdb-logo.svg" width="72" height="31" alt="TMDB"></a><p class="attribution">This product uses the TMDB API but is not endorsed or certified by TMDB.</p></div></div></footer>
+</body>
+</html>

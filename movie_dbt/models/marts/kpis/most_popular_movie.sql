@@ -18,4 +18,4 @@ SELECT
 FROM rated_movies r
 LEFT JOIN DIM_MOVIES m 
 ON m.MOVIE_ID = r.MOVIE_ID
-ORDER BY r.num_of_votes DESC LIMIT 1
+ORDER BY r.num_of_votes DESC NULLS LAST, r.movie_id ASC LIMIT 1
