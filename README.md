@@ -1,8 +1,12 @@
 # Movie Analytics Pipeline
 
+**Live Dashboard:** [Open the Movie Observatory](https://ishuapurva1996.github.io/movie-analytics-pipeline/)
+
+[![Movie Observatory dashboard preview](docs/assets/dashboard-preview.png)](https://ishuapurva1996.github.io/movie-analytics-pipeline/)
+
 A movie data pipeline that combines IMDb datasets with TMDB now-playing information for the United States and India. Python extracts the source data, Amazon S3 stores the landing files, Snowflake holds the warehouse, and dbt builds the tables used for analysis. Apache Airflow schedules and coordinates the work.
 
-**Current status:** ingestion, warehouse refresh, dbt models, the dashboard, and its publication workflows are implemented. The dashboard awaits deployment from `main`; a complete ten-task run and the public site have not yet been verified. See [dashboard operations](docs/DASHBOARD_OPERATIONS.md) for configuration and release requirements.
+**Current status:** the approved dashboard is live on GitHub Pages, with all nine charts, four KPIs, movie highlights, job-role and US/India selectors, and a light/dark toggle. The public site was verified on desktop and mobile on October 7, 2026. It uses the existing October 5 data snapshot with News titles excluded; data updates are manual initially. Automatic Airflow publication is implemented but still requires private integration setup and a verified complete ten-task run. See [dashboard operations](docs/DASHBOARD_OPERATIONS.md).
 
 ## What the pipeline supports
 
@@ -29,8 +33,10 @@ flowchart LR
     Airflow -. loads .-> RAW
     Airflow -. builds and tests .-> Staging
     Marts --> Export[Validated JSON export]
+    Export --> Snapshot[Reviewed public snapshot: current mode]
+    Snapshot --> Actions
     Export --> Private[Private S3 bundle and latest pointer]
-    Private --> Actions[GitHub Actions on main]
+    Private -. automatic mode: setup pending .-> Actions[GitHub Actions on main]
     Actions --> Pages[GitHub Pages dashboard]
 ```
 
@@ -46,7 +52,9 @@ All tables use full refreshes, including `TMDB_NOW_PLAYING`. Its `SNAPSHOT_DATE`
 
 TMDB movie-details requests have a 30-second timeout and retry temporary failures up to three attempts. If any movie still fails, enrichment raises an error before writing its output CSV. Airflow retries the task once after five minutes. The TMDB upload, TMDB load, and dbt build wait for enrichment to succeed; the independent IMDb branch can still run.
 
-After dbt succeeds, Airflow checks the run's task history, validates the public data contract, writes an immutable private S3 bundle, and conditionally updates the latest-success pointer. A final task requests the GitHub deployment workflow. Successful dispatch means GitHub accepted the request; the Actions run and its public bundle check establish whether deployment succeeded. Failures before deployment preserve the last successful site. See [failure recovery](docs/DASHBOARD_OPERATIONS.md#failure-recovery).
+The live site currently publishes the reviewed export checked into `web_dashboard/snapshot/`. Relevant changes to `main` or a manual run of [Publish dashboard snapshot](https://github.com/ishuapurva1996/movie-analytics-pipeline/actions/workflows/deploy-dashboard-snapshot.yml) redeploy it. Data changes require replacing the real export and its checksum; redeploying alone does not refresh the warehouse.
+
+The separate automatic route, once configured, runs after dbt succeeds: Airflow checks task history, validates the public data contract, writes an immutable private S3 bundle, and conditionally updates the latest-success pointer. A final task requests the GitHub deployment workflow. Successful dispatch means GitHub accepted the request; the Actions run and its public bundle check establish whether deployment succeeded. Failures before deployment preserve the last successful site. See [failure recovery](docs/DASHBOARD_OPERATIONS.md#failure-recovery).
 
 ## Run locally
 
@@ -121,7 +129,7 @@ Current limits:
 - Full refreshes do not preserve previous now-playing snapshots for comparisons over time.
 - Budget, revenue, and country fields are extracted, but the broader financial and country comparison analytics from the original project scope are not implemented.
 - Airflow currently runs locally. Its scheduled pipeline only runs while the Docker services and host are available.
-- First deployment requires private API/dispatch credentials, a scoped AWS read role, GitHub Pages configuration, and permission covering the intended public data. These requirements are not provisioned by cloning the repository.
+- Automatic publication after an Airflow run requires private API/dispatch credentials and a scoped AWS read role. The current reviewed-snapshot site does not require these credentials; its data is updated manually.
 
 ## Data sources and attribution
 

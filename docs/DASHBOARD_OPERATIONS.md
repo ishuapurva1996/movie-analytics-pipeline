@@ -1,6 +1,8 @@
 # Dashboard operations
 
-The approved movie dashboard is packaged as `index.html` for GitHub Pages; `redesign.html` remains an alias. The artifact includes the light/dark toggle, all nine charts, four KPIs, two movie highlights, and both selectors. The original dashboard remains in the source checkout for comparison but is not the deployed homepage. No public deployment or complete ten-task publication run has been verified.
+The approved movie dashboard is live at [the Movie Observatory](https://ishuapurva1996.github.io/movie-analytics-pipeline/). It is packaged as `index.html` for GitHub Pages; `redesign.html` remains an alias. The artifact includes the light/dark toggle, all nine charts, four KPIs, two movie highlights, and both selectors. The original dashboard remains in the source checkout for comparison but is not the deployed homepage.
+
+The [first snapshot deployment](https://github.com/ishuapurva1996/movie-analytics-pipeline/actions/runs/37695898993) succeeded on October 7, 2026. The public JSON matched the reviewed SHA-256, and browser verification passed for all nine charts, desktop/mobile layout, role and country selectors, themes, and News exclusion. A complete ten-task automatic Airflow publication run remains unverified.
 
 The latest local dbt build passed all 104 checks, including News exclusion, and the real export passed validation. The initial public release uses that reviewed export through the snapshot route below. This is independent of the execution-proven Airflow/S3 route; it does not create an Airflow publication receipt or a latest-success pointer.
 
@@ -18,7 +20,7 @@ python scripts/build_dashboard_site.py --snapshot --state /tmp/movie-dashboard-s
 
 To enable automatic Airflow publication later, complete the private configuration below, verify the complete ten-task pipeline and private handoff, then set the repository variable `DASHBOARD_PUBLICATION_MODE` to `airflow`. This disables snapshot publication and enables the existing S3 workflow. Both modes share one Pages concurrency group. Leave the variable unset for the initial snapshot release.
 
-The dedicated Airflow API reader is configured and its metadata access was checked; Connections and Variables access returned 403. GitHub Pages uses Actions, and the `github-pages` environment allows only `main`. Bucket/prefix Actions secrets and the region variable are configured. Initial setup still requires the private GitHub dispatch token and an AWS OIDC read role. The available AWS principal received `AccessDenied` when creating that role and inspecting bucket security; an AWS administrator must provision the role and verify the bucket controls. Recreate Airflow services after completing private environment configuration. The owner confirmed on October 2, 2026 that permission covers this dashboard’s public aggregates and ranked movie/person rows.
+The dedicated Airflow API reader is configured and its metadata access was checked; Connections and Variables access returned 403. GitHub Pages uses Actions, and the `github-pages` environment allows only `main`. Bucket/prefix Actions secrets and the region variable are configured. Automatic Airflow publication still requires the private GitHub dispatch token and an AWS OIDC read role. The available AWS principal received `AccessDenied` when creating that role and inspecting bucket security; an AWS administrator must provision the role and verify the bucket controls. Recreate Airflow services after completing private environment configuration. The owner confirmed on October 2, 2026 that permission covers this dashboard’s public aggregates and ranked movie/person rows.
 
 ## Automatic Airflow publication flow
 
