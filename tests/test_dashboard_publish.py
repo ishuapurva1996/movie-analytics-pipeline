@@ -76,6 +76,20 @@ class EligibilityTests(unittest.TestCase):
         evidence = check_eligibility(MetadataAPI(), 'current', dbt_receipt())
         self.assertEqual(evidence['warehouse_completed_at'], '2026-10-02T05:10:00Z')
 
+    def test_worker_start_after_supervisor_start_is_eligible_for_same_attempt(self):
+        # Airflow's worker and metadata API record separate start timestamps.
+        receipt = dbt_receipt()
+        receipt['started_at'] = '2026-10-02T05:00:00.012123Z'
+        evidence = check_eligibility(MetadataAPI(), 'current', receipt)
+        self.assertEqual(evidence['warehouse_completed_at'], '2026-10-02T05:10:00Z')
+
+    def test_receipt_start_outside_successful_attempt_is_denied(self):
+        for start in ('2026-10-02T04:59:59.999999Z', '2026-10-02T05:10:00Z'):
+            receipt = dbt_receipt()
+            receipt['started_at'] = start
+            with self.subTest(start=start), self.assertRaisesRegex(PublicationError, 'receipt'):
+                check_eligibility(MetadataAPI(), 'current', receipt)
+
     def test_failed_cleared_or_restarted_predecessor_is_denied(self):
         for state in [None, 'failed', 'running', 'up_for_retry']:
             api = MetadataAPI()

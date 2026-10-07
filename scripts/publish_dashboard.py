@@ -118,8 +118,10 @@ def check_dbt_receipt(receipt, dag_id, run_id, dbt):
             or receipt['task_id'] != 'dbt_build' or receipt['task_instance_id'] != dbt['id']
             or type(receipt['try_number']) is not int or receipt['try_number'] != dbt['try_number']
             or receipt['dag_version_id'] != dbt['dag_version']['id']
-            or timestamp(receipt['started_at']) != timestamp(dbt['start_date'])
-            or not timestamp(dbt['start_date']) <= timestamp(receipt['completed_at']) <= timestamp(dbt['end_date'])):
+            # The supervisor/API starts the attempt before the worker's clock stamp.
+            # Bind both receipt timestamps to the same identified successful attempt.
+            or not timestamp(dbt['start_date']) <= timestamp(receipt['started_at'])
+                <= timestamp(receipt['completed_at']) <= timestamp(dbt['end_date'])):
         raise PublicationError('Missing or stale successful dbt completion receipt; run the complete DAG.')
 
 
