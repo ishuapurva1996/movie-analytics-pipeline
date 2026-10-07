@@ -2,11 +2,25 @@
 
 The approved movie dashboard is packaged as `index.html` for GitHub Pages; `redesign.html` remains an alias. The artifact includes the light/dark toggle, all nine charts, four KPIs, two movie highlights, and both selectors. The original dashboard remains in the source checkout for comparison but is not the deployed homepage. No public deployment or complete ten-task publication run has been verified.
 
-The latest local dbt build passed all 104 checks, including News exclusion, and the read-only preview bundle passed validation. These are local compatibility checks, not proof of publication eligibility. First production publication still requires a successful export through the normal Airflow provenance checks and a successful Pages deployment.
+The latest local dbt build passed all 104 checks, including News exclusion, and the real export passed validation. The initial public release uses that reviewed export through the snapshot route below. This is independent of the execution-proven Airflow/S3 route; it does not create an Airflow publication receipt or a latest-success pointer.
+
+## Reviewed snapshot publication
+
+The default [Publish dashboard snapshot workflow](../.github/workflows/deploy-dashboard-snapshot.yml) publishes the approved design with `web_dashboard/snapshot/dashboard.json`. This is the existing October 5, 2026 warehouse export, with News titles excluded and its original completion, export, and capture dates retained. It contains only the public analytics contract; credentials and private infrastructure details are absent.
+
+The workflow runs on relevant changes to `main` or manual dispatch. It checks the committed SHA-256, schema and semantics, rejects synthetic data, assembles only allowlisted assets, and verifies the public JSON checksum after deployment. A rerun resolves current `main`; if it changes after artifact upload, publication stops instead of deploying an obsolete artifact. Pages must use GitHub Actions with the `github-pages` environment restricted to `main`. No AWS credentials or Airflow dispatch token are needed for this route.
+
+Data updates are manual in snapshot mode: replace the reviewed export and its checksum together, validate and merge the change, then verify the Pages run. Redeploying the frontend does not refresh warehouse data. For local assembly:
+
+```bash
+python scripts/build_dashboard_site.py --snapshot --state /tmp/movie-dashboard-selection.json
+```
+
+To enable automatic Airflow publication later, complete the private configuration below, verify the complete ten-task pipeline and private handoff, then set the repository variable `DASHBOARD_PUBLICATION_MODE` to `airflow`. This disables snapshot publication and enables the existing S3 workflow. Both modes share one Pages concurrency group. Leave the variable unset for the initial snapshot release.
 
 The dedicated Airflow API reader is configured and its metadata access was checked; Connections and Variables access returned 403. GitHub Pages uses Actions, and the `github-pages` environment allows only `main`. Bucket/prefix Actions secrets and the region variable are configured. Initial setup still requires the private GitHub dispatch token and an AWS OIDC read role. The available AWS principal received `AccessDenied` when creating that role and inspecting bucket security; an AWS administrator must provision the role and verify the bucket controls. Recreate Airflow services after completing private environment configuration. The owner confirmed on October 2, 2026 that permission covers this dashboard’s public aggregates and ranked movie/person rows.
 
-## Publication flow
+## Automatic Airflow publication flow
 
 The schedule remains Monday at 6:00 AM `America/Los_Angeles`. The original eight ingestion, RAW-loading, and dbt tasks retain full-refresh behavior. Two dependent tasks add publication:
 
@@ -146,9 +160,9 @@ In GitHub repository settings:
 
 The deployment job also checks this repository and `refs/heads/main`, and requests only Contents read, Pages write, and ID token write. Pull-request validation has no production credential access. Do not grant the Pages role Snowflake access or S3 write access.
 
-## First publication and routine verification
+## First automatic publication and routine verification
 
-Complete AWS/reader/token setup and the `github-pages` restrictions before enabling public deployment. Source permission for this dashboard was confirmed by the owner on October 2, 2026. Merge the implementation to `main`, make that DAG available to Airflow, and run the complete DAG. No earlier dbt-only run substitutes for this verification. Runs predating the success-only completion receipt are deliberately ineligible; run the complete DAG after merging the implementation.
+Complete AWS/reader/token setup and the `github-pages` restrictions before enabling automatic Airflow publication. Source permission for this dashboard was confirmed by the owner on October 2, 2026. Merge the implementation to `main`, make that DAG available to Airflow, and run the complete DAG. No earlier dbt-only run substitutes for this verification. Runs predating the success-only completion receipt are deliberately ineligible; run the complete DAG after merging the implementation.
 
 Confirm all ten Airflow tasks succeeded. Privately compare the S3 pointer with the immutable bundle: checksum, bundle ID, schema version, warehouse completion, and export time must agree. Then inspect the **Deploy dashboard** run for the selected current-main commit, Pages deployment, and successful public checksum check. Check that private bucket, prefix, account, and role identifiers are masked in runner logs. Open the site at the URL returned by Pages and verify that its displayed bundle/timestamps match, both markets render, and stale/unavailable states are clear. Record a live README link only after this check succeeds.
 

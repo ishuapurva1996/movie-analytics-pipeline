@@ -195,11 +195,30 @@ def recheck(state):
     return fresh
 
 
+def assemble_snapshot(output, state):
+    """Publish the reviewed real export in main, independently of Airflow/S3."""
+    if os.environ.get('GITHUB_ACTIONS') == 'true':
+        if os.environ.get('GITHUB_REF') != 'refs/heads/main' or os.environ.get('GITHUB_REPOSITORY') != REPOSITORY:
+            raise SiteError('Snapshot publication is restricted to this repository on main.')
+        commit = _checkout_current_main()
+    else:
+        commit = subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=ROOT, text=True).strip()
+    folder = ROOT / 'web_dashboard/snapshot'
+    if folder.is_symlink() or any((folder / name).is_symlink() for name in ('dashboard.json', 'dashboard.sha256')):
+        raise SiteError('Snapshot assets must be regular files.')
+    body = (folder / 'dashboard.json').read_bytes()
+    checksum = (folder / 'dashboard.sha256').read_text().strip()
+    metadata = build_site(ROOT / 'web_dashboard', output, body, checksum)
+    Path(state).write_text(json.dumps({'commit': commit, 'sha256': checksum,
+                                     'bundle_id': metadata['bundle_id']}))
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     mode = parser.add_mutually_exclusive_group(required=True)
     mode.add_argument('--assemble', action='store_true')
     mode.add_argument('--recheck', action='store_true')
+    mode.add_argument('--snapshot', action='store_true', help='Reviewed real export checked into main; original dates are retained')
     mode.add_argument('--bundle', type=Path, help='Local validation/preview only')
     parser.add_argument('--output', type=Path, default=ROOT / '_site')
     parser.add_argument('--state', type=Path)
@@ -213,6 +232,8 @@ def main():
             build_site(ROOT / 'web_dashboard', args.output, body, hashlib.sha256(body).hexdigest(), allow_synthetic=args.allow_synthetic)
         elif args.state is None:
             raise SiteError('A private assembly state path is required.')
+        elif args.snapshot:
+            assemble_snapshot(args.output, args.state)
         elif args.assemble:
             assemble(args.output, args.state)
         else:

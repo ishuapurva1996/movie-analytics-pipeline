@@ -89,6 +89,35 @@ class SiteTests(unittest.TestCase):
             with self.assertRaises(SiteError):
                 build_site(source, root / '_site', self.body, self.digest, allow_synthetic=True)
 
+    def test_reviewed_snapshot_keeps_real_bytes_and_original_dates(self):
+        body = (ROOT / 'web_dashboard/snapshot/dashboard.json').read_bytes()
+        with tempfile.TemporaryDirectory() as directory:
+            output, state = Path(directory) / 'site', Path(directory) / 'selection.json'
+            with patch.dict(os.environ, {'GITHUB_ACTIONS': 'false'}):
+                site.assemble_snapshot(output, state)
+            self.assertEqual((output / 'data/dashboard.json').read_bytes(), body)
+            self.assertEqual(json.loads(state.read_text())['sha256'], hashlib.sha256(body).hexdigest())
+            self.assertFalse(json.loads(body)['metadata']['synthetic'])
+
+    def test_snapshot_rejects_untrusted_actions_branch(self):
+        with patch.dict(os.environ, {'GITHUB_ACTIONS': 'true', 'GITHUB_REF': 'refs/heads/feature',
+                                    'GITHUB_REPOSITORY': site.REPOSITORY}):
+            with self.assertRaisesRegex(SiteError, 'restricted'):
+                site.assemble_snapshot('unused', 'unused')
+
+    def test_snapshot_refuses_synthetic_even_with_matching_checksum(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            folder = root / 'web_dashboard/snapshot'
+            folder.mkdir(parents=True)
+            (folder / 'dashboard.json').write_bytes(self.body)
+            (folder / 'dashboard.sha256').write_text(self.digest)
+            with patch.object(site, 'ROOT', root), patch.dict(os.environ, {'GITHUB_ACTIONS': 'false'}), \
+                    patch.object(site.subprocess, 'check_output', return_value='a' * 40):
+                with self.assertRaisesRegex(SiteError, 'validation'):
+                    site.assemble_snapshot(root / 'site', root / 'selection.json')
+            self.assertFalse((root / 'site').exists())
+
 
 class MemoryS3:
     """Private-object test double that can advance the latest pointer between reads."""
