@@ -1,88 +1,201 @@
-# Movie Analytics Pipeline
+# Movie Analytics Pipeline & Dashboard
 
-**Live Dashboard:** [Open the Movie Observatory](https://ishuapurva1996.github.io/movie-analytics-pipeline/)
+A data engineering project that combines IMDb datasets and TMDB now-playing data, transforms them in Snowflake with dbt, and presents the results in **The Movie Observatory**, a public movie analytics dashboard.
 
-[![Movie Observatory dashboard preview](docs/assets/dashboard-preview.png)](https://ishuapurva1996.github.io/movie-analytics-pipeline/)
+**Stack:** IMDb + TMDB API → Python + Airflow (Docker) → Amazon S3 → Snowflake → dbt → GitHub Actions → Web Dashboard (Plotly.js)
 
-A movie data pipeline that combines IMDb datasets with TMDB now-playing information for the United States and India. Python extracts the source data, Amazon S3 stores the landing files, Snowflake holds the warehouse, and dbt builds the tables used for analysis. Apache Airflow schedules and coordinates the work.
+**Live Dashboard:** [ishuapurva1996.github.io/movie-analytics-pipeline](https://ishuapurva1996.github.io/movie-analytics-pipeline/)
 
-**Current status:** the approved dashboard is live on GitHub Pages, with all nine charts, four KPIs, movie highlights, job-role and US/India selectors, and a light/dark toggle. The public site was verified on desktop and mobile on October 7, 2026. It uses the existing October 5 data snapshot with News titles excluded; data updates are manual initially. Automatic Airflow publication is implemented but still requires private integration setup and a verified complete ten-task run. See [dashboard operations](docs/DASHBOARD_OPERATIONS.md).
+The dashboard is live with the existing **October 5, 2026 data snapshot**. Data updates are manual for now. The weekly Airflow pipeline and automatic publication workflow are implemented; automatic publication still needs private integration setup and a verified complete ten-task run.
 
-## What the pipeline supports
+## Dashboard preview
 
-- Movie counts, ratings, runtimes, and genre summaries.
-- Analyses by release year and decade, rating distributions, and ranked movies and people.
-- Current now-playing counts and movie recommendations for the US and India.
-- Weekly refreshes every Monday at **6:00 AM America/Los_Angeles**, with manual runs available in Airflow.
-- Full replacement of all nine Snowflake RAW tables, followed by a full dbt rebuild.
+[![The Movie Observatory dashboard](docs/assets/dashboard-preview.png)](https://ishuapurva1996.github.io/movie-analytics-pipeline/)
 
-TMDB details are fetched for the distinct movies in the current now-playing extract. They supplement the broader IMDb catalog; they are not a complete historical TMDB catalog.
+## Dashboard insights
+
+Four overview KPIs summarize the catalog: **total movies, movies with a rating, average movie rating, and average movie length**. Movie highlights identify the highest-rated and most-voted titles.
+
+The nine charts let visitors explore:
+
+- **Rating distribution:** the share of qualifying movies in each rating range.
+- **Average rating by genre:** how genre averages compare among movies meeting the vote threshold.
+- **Average runtime by genre:** which genres have longer movies on average.
+- **Top 10 films of all time:** the highest-rated qualifying films in this catalog.
+- **Movies by decade:** the number of catalog movies meeting the length and year rules.
+- **Average rating by decade:** how ratings compare across release decades.
+- **Top 10 release years:** the years with the highest average movie ratings.
+- **Top people by job role:** people ranked by the average ratings of their qualifying movie credits.
+- **Now-playing recommendations:** up to five qualifying movies in the United States or India, ranked by rating.
+
+### Interactive features
+
+- **Light/dark toggle:** saves the selected theme and updates the charts with it.
+- **Job-role selector:** switches the people ranking between directors, actors, writers, and other supported roles.
+- **US/India selector:** changes the now-playing recommendations and market capture date.
+- **Sized and colored dots:** show vote counts for top movies and qualifying film counts for top years and people. Legends and tooltips explain the scales.
+- **Expandable data tables:** provide exact values and calculation rules beneath each chart.
+- **Responsive layout:** supports desktop and mobile, with keyboard-accessible controls and source-date information.
+
+Role and country selectors affect their own sections. The aggregated tables do not support accurate dashboard-wide genre or year filters.
 
 ## Architecture
 
 ```mermaid
 flowchart LR
-    IMDb[IMDb datasets] --> Python[Python extraction]
-    TMDB[TMDB API] --> Python
-    Python --> S3[Amazon S3 landing files]
-    S3 --> RAW[Snowflake: 9 RAW tables]
-    RAW --> Staging[dbt: 9 staging views]
-    Staging --> Curated[dbt: 7 curated tables]
-    Curated --> Marts[dbt: 20 analytics tables]
-    Airflow[Airflow: 10 tasks] -. orchestrates .-> Python
-    Airflow -. loads .-> RAW
-    Airflow -. builds and tests .-> Staging
-    Marts --> Export[Validated JSON export]
-    Export --> Snapshot[Reviewed public snapshot: current mode]
-    Snapshot --> Actions
-    Export --> Private[Private S3 bundle and latest pointer]
-    Private -. automatic mode: setup pending .-> Actions[GitHub Actions on main]
+    IMDb[IMDb datasets] --> Extract[Python extraction]
+    TMDB[TMDB API] --> Extract
+    Extract --> S3[Amazon S3]
+    S3 --> RAW[Snowflake RAW]
+    RAW --> Staging[dbt staging]
+    Staging --> Curated[dbt curated]
+    Curated --> Analytics[dbt analytics]
+    Analytics --> Export[Validated JSON export]
+    Export --> Snapshot[Reviewed snapshot: current mode]
+    Snapshot --> Actions[GitHub Actions]
     Actions --> Pages[GitHub Pages dashboard]
+    Export -. automatic mode: setup pending .-> Private[Private S3 bundle]
+    Private -.-> Actions
+    Airflow[Airflow in Docker] -. extraction and loading .-> Extract
+    Airflow -. build and test .-> Staging
 ```
 
-The RAW layer holds six IMDb datasets and three TMDB datasets. Staging views normalize source fields. Curated tables join movie, genre, person, rating, and now-playing data. Analytics tables provide the final summaries and rankings.
+### Pipeline components
 
-The dashboard reads a bounded JSON export with aggregate metrics and ranked rows. Visitors need no Snowflake, AWS, or TMDB credentials. [Dashboard metrics](docs/DASHBOARD_METRICS.md) documents each population, threshold, ranking, and limitation.
+| Component | What it does |
+| --- | --- |
+| **IMDb datasets** | Supply movie metadata, ratings, alternate titles, people, crew, and principal credits. |
+| **TMDB API** | Supplies genres, US/India now-playing lists, and details for movies in the current extract. |
+| **Python + Amazon S3** | Download source files, enrich TMDB movies, and store the landing files. |
+| **Apache Airflow** | Coordinates ten tasks, scheduled every Monday at **6:00 AM America/Los_Angeles**, with manual runs available. |
+| **Snowflake RAW** | Holds six IMDb and three TMDB source tables. |
+| **dbt staging** | Normalizes source fields in nine views and excludes News-tagged titles before downstream analysis. |
+| **dbt curated** | Builds seven tables for movies, genres, people, ratings, credits, and now playing. |
+| **dbt analytics** | Builds twenty tables containing KPIs, genre summaries, distributions, and rankings. |
+| **GitHub Actions + Pages** | Validate and publish the static dashboard with its public JSON snapshot. |
 
-## Refresh and failure behavior
+The browser reads exported analytics; it does not connect to Snowflake, AWS, or TMDB with private credentials.
 
-Each RAW load first copies data into a temporary Snowflake table. After checking that the load is nonempty, the pipeline replaces that target table's rows in a transaction. An empty load leaves the target unchanged, and a failed insert rolls back its replacement. These transactions apply **per table**, not to the entire pipeline at once.
+## Project structure
 
-All tables use full refreshes, including `TMDB_NOW_PLAYING`. Its `SNAPSHOT_DATE` describes the incoming extract; previous snapshots are not retained. The dbt task runs `dbt build --full-refresh`, rebuilding 27 tables and recreating nine staging views.
+```text
+movie-analytics-pipeline/
+├── .github/workflows/
+│   ├── validate-dashboard.yml          # Python, DAG, and browser checks
+│   ├── deploy-dashboard-snapshot.yml   # Current reviewed-snapshot publication
+│   └── deploy-dashboard.yml            # Optional automatic Airflow/S3 publication
+├── dags/
+│   └── movie_pipeline.py               # Extraction, RAW refresh, dbt, and publication
+├── scripts/                            # Ingestion, export, and site assembly
+├── movie_dbt/
+│   ├── models/
+│   │   ├── staging/                    # IMDb and TMDB staging views
+│   │   ├── curated/                    # Dimensions, facts, and bridge tables
+│   │   └── marts/                      # Nine chart models and eleven KPI models
+│   ├── macros/                         # Shared transformation rules
+│   └── tests/                          # SQL data checks
+├── airflow/                            # Dependencies and environment-based dbt profile
+├── web_dashboard/
+│   ├── redesign.html                   # Approved design; published as index.html
+│   ├── index.html                      # Original implementation for source comparison
+│   ├── css/                            # Dashboard layouts and themes
+│   ├── js/                             # Plotly charts, filters, and theme controls
+│   ├── assets/                         # Vendored Plotly and TMDB attribution logo
+│   ├── snapshot/                       # Reviewed public JSON and its checksum
+│   └── data-contract.schema.json       # Allowed public fields and validation rules
+├── docs/
+│   ├── assets/dashboard-preview.png    # README preview
+│   ├── DASHBOARD_METRICS.md             # Populations, thresholds, and rankings
+│   └── DASHBOARD_OPERATIONS.md          # Publication setup and recovery
+├── tests/                              # Python and browser regression tests
+├── Dockerfile
+├── docker-compose.yaml
+├── .env.example
+├── requirements.txt
+├── requirements-dashboard.txt
+└── AIRFLOW_SETUP.md
+```
 
-TMDB movie-details requests have a 30-second timeout and retry temporary failures up to three attempts. If any movie still fails, enrichment raises an error before writing its output CSV. Airflow retries the task once after five minutes. The TMDB upload, TMDB load, and dbt build wait for enrichment to succeed; the independent IMDb branch can still run.
+## Setup
 
-The live site currently publishes the reviewed export checked into `web_dashboard/snapshot/`. Relevant changes to `main` or a manual run of [Publish dashboard snapshot](https://github.com/ishuapurva1996/movie-analytics-pipeline/actions/workflows/deploy-dashboard-snapshot.yml) redeploy it. Data changes require replacing the real export and its checksum; redeploying alone does not refresh the warehouse.
+### Preview the dashboard locally
 
-The separate automatic route, once configured, runs after dbt succeeds: Airflow checks task history, validates the public data contract, writes an immutable private S3 bundle, and conditionally updates the latest-success pointer. A final task requests the GitHub deployment workflow. Successful dispatch means GitHub accepted the request; the Actions run and its public bundle check establish whether deployment succeeded. Failures before deployment preserve the last successful site. See [failure recovery](docs/DASHBOARD_OPERATIONS.md#failure-recovery).
-
-## Run locally
-
-Prerequisites:
-
-- Docker with Docker Compose.
-- A TMDB API Read Access Token.
-- AWS credentials and an S3 bucket for the landing files.
-- A Snowflake account with a warehouse, `MOVIE_DB.RAW` target tables, external stages, and file formats already configured for the source files.
-
-The repository does **not** provision the AWS or Snowflake infrastructure. The DAG and dbt sources currently reference `MOVIE_DB.RAW`; check those definitions when adapting the project to a different database.
-
-1. Copy [.env.example](.env.example) to `.env` and fill in your local settings.
-2. Configure AWS credentials. Docker mounts `~/.aws` read-only; environment variables are also supported.
-3. Follow [AIRFLOW_SETUP.md](AIRFLOW_SETUP.md) to build the image, initialize Airflow, start the services, and verify the Snowflake connection.
-4. Configure the dashboard credentials and GitHub settings in [dashboard operations](docs/DASHBOARD_OPERATIONS.md).
-5. Open [local Airflow](http://localhost:8080), unpause `movie_analytics_pipeline`, and trigger a manual run. Check that all ten tasks succeed. Review both dbt test results and the [Actions deployment run](https://github.com/ishuapurva1996/movie-analytics-pipeline/actions/workflows/deploy-dashboard.yml) before calling the dashboard updated.
-
-The Compose configuration is for local development. It includes local Airflow login defaults documented in the setup guide.
-
-## Tests
-
-The Python regression suite covers extraction/enrichment, the DAG and Snowflake refresh logic, the dashboard contract and exporter, publication eligibility, and site assembly. These tests use mocked external services; passing them does not replace a complete Airflow run against your infrastructure.
-
-Install the local dependencies in a virtual environment and run the ingestion and dashboard tests:
+The checked-in public snapshot lets you preview the approved dashboard without warehouse credentials. From the project root:
 
 ```bash
 python3 -m venv movie_proj_venv
+source movie_proj_venv/bin/activate
+pip install -r requirements-dashboard.txt
+python scripts/build_dashboard_site.py --snapshot --state /tmp/movie-dashboard-selection.json
+python -m http.server 8000 --directory _site
+```
+
+Open [localhost:8000](http://localhost:8000). Serve the dashboard over HTTP because its JavaScript fetches the JSON data. Site assembly publishes the approved design at `/`; `/redesign.html` remains an alias.
+
+### Run the data pipeline
+
+**Prerequisites:** Docker with Docker Compose, a TMDB API Read Access Token, AWS credentials and an S3 bucket, and a Snowflake account with the warehouse, `MOVIE_DB.RAW` tables, external stages, and source file formats already configured. The repository does not provision AWS or Snowflake infrastructure.
+
+1. Copy [.env.example](.env.example) to `.env` and fill in the private settings. Keep credentials out of Git.
+2. Configure AWS credentials. Docker mounts `~/.aws` read-only; environment variables are also supported.
+3. Follow [AIRFLOW_SETUP.md](AIRFLOW_SETUP.md) to build the image, initialize Airflow, start its services, and verify the Snowflake connection.
+4. Configure the export and automatic publication requirements in [dashboard operations](docs/DASHBOARD_OPERATIONS.md). A full ten-task run requires this private configuration even while the public site uses snapshot mode.
+5. Open [Airflow at localhost:8080](http://localhost:8080), unpause `movie_analytics_pipeline`, and trigger a manual run. Confirm all ten tasks succeed and separately verify the GitHub deployment before calling automatic publication complete.
+
+The DAG and dbt sources reference `MOVIE_DB.RAW`; check those definitions when adapting the database. The Compose setup includes local development login defaults documented in the setup guide.
+
+## Dashboard deployment
+
+### Current mode: reviewed snapshot
+
+[Publish dashboard snapshot](https://github.com/ishuapurva1996/movie-analytics-pipeline/actions/workflows/deploy-dashboard-snapshot.yml) runs on relevant pushes to `main` or manual dispatch. It validates the checked-in JSON and SHA-256 checksum, assembles the approved frontend, uploads a Pages artifact, and verifies the public JSON after deployment.
+
+GitHub Pages uses **GitHub Actions** as its source. To update the data, replace the real export and checksum together, validate the change, and publish it through `main`. Redeploying the frontend alone preserves the original warehouse, export, and capture dates.
+
+### Optional mode: automatic publication after Airflow
+
+```text
+Successful ingestion and dbt build
+  → Validate Airflow completion evidence and export public analytics
+  → Write an immutable private S3 bundle and update the latest-success pointer
+  → Request GitHub Actions deployment
+  → Deploy current main with the latest validated bundle
+  → Verify the public JSON checksum
+```
+
+This route requires the dedicated Airflow metadata reader, a repository-scoped dispatch token, and a read-only AWS OIDC role. After completing setup and verifying the full pipeline, set `DASHBOARD_PUBLICATION_MODE=airflow` in GitHub repository variables. This switches off snapshot publication and enables the automatic workflow.
+
+A successful dispatch only confirms that GitHub accepted the request. The deployment run and public checksum check confirm publication. Predeployment failures preserve the last successful site. See [publication setup and failure recovery](docs/DASHBOARD_OPERATIONS.md).
+
+## Key data notes
+
+- **Catalog scope:** IMDb movie and TV-movie records plus current TMDB enrichment. Adult content is not excluded. Unknown genre classifications are retained.
+- **News exclusion:** staging removes whole News-tagged titles, including titles with other genres and cross-source matches, before they reach downstream models.
+- **Source preference:** ratings prefer IMDb when available, otherwise TMDB. Votes make that choice independently, so a rating and its displayed vote count can come from different providers.
+- **Qualifying populations:** charts use different vote, runtime, and minimum-film rules. Genre ratings require 1,000+ votes on either source; runtime averages use movies 40–300 minutes long. The full catalog average is unweighted. A movie can contribute to more than one genre; IMDb and TMDB genre names are not harmonized.
+- **Rankings:** top films need 100,000+ votes on either source. Lists use stable tie-breaking. Top release years are a ranking, not a complete time series. People ratings summarize qualifying principal-credit rows, not individual performance or a full filmography; repeated credits can weight a movie more than once.
+- **Counts and distributions:** decade counts cover qualifying catalog movies, not worldwide production totals. The 2020s are incomplete. Rating-distribution percentages use the qualifying population, and the final 9–10 range includes exactly 10.
+- **TMDB coverage:** details enrich the distinct titles in the current US/India now-playing extract; historical TMDB backfill is not implemented. These are exhibition markets, not production countries, and a movie can appear in both.
+- **Refresh behavior:** all nine RAW tables use full replacement. Each table loads through a temporary table and a transaction; an empty load preserves the target and an insert failure rolls back its replacement. Transactions are per table. dbt rebuilds 27 tables and recreates nine staging views with `dbt build --full-refresh`.
+- **Missing values and freshness:** unknown values display as unavailable. Warehouse completion, export time, and TMDB capture dates have different meanings; IMDb capture time is unavailable. An eight-day warning identifies stale data. Previous now-playing snapshots are not retained.
+- **Current limits:** financial and country-comparison analytics are not implemented, although budget, revenue, and country fields are extracted. The local Airflow schedule runs only while its host and Docker services are available.
+
+Exact thresholds, ranking rules, and public fields are documented in [dashboard metrics](docs/DASHBOARD_METRICS.md).
+
+<details>
+<summary>Pipeline retry and validation details</summary>
+
+TMDB movie-details requests have a 30-second timeout and retry temporary failures up to three attempts. If a movie still fails, enrichment raises an error before writing its output CSV. Airflow retries the task once after five minutes. TMDB upload, loading, and dbt wait for enrichment to succeed; the independent IMDb branch can still run.
+
+The public export contains only allowlisted aggregate metrics and ranked rows. Synthetic fixtures are used for tests and are never published as production data. Automatic publication requires execution-backed dbt completion evidence and consistent Airflow history; manually marking a failed build successful cannot make it eligible. Conditional pointer updates and predeployment input checks protect against competing or outdated publications.
+
+</details>
+
+## Tests
+
+The regression suite covers extraction and enrichment, DAG wiring and Snowflake refreshes, public data validation, export eligibility, site assembly, and browser behavior. Browser checks cover chart values, desktop/mobile layout, keyboard controls, filters, themes, freshness, and empty/error states. The deployed site was verified on desktop and mobile on October 7, 2026.
+
+```bash
 source movie_proj_venv/bin/activate
 pip install -r requirements.txt
 pip install -r requirements-dashboard.txt
@@ -96,46 +209,13 @@ Run the Airflow tests inside a running scheduler container. The test file is sup
 docker compose exec -T -e PYTHONPATH=/opt/airflow/dags airflow-scheduler python - < tests/test_airflow_dag.py
 ```
 
-The dbt project also defines data tests that run against Snowflake as part of the `dbt_build` task. See [the model definitions](movie_dbt/models/) for the transformations and associated checks.
-
-The [validation workflow](.github/workflows/validate-dashboard.yml) also checks JavaScript syntax and browser behavior with visibly synthetic fixtures. Fixtures are never published as production data.
-
-## Repository layout
-
-| Path | Purpose |
-| --- | --- |
-| [dags/movie_pipeline.py](dags/movie_pipeline.py) | Airflow dependencies, RAW refreshes, and dbt execution |
-| [scripts/](scripts/) | Source ingestion, validated dashboard export, private publication, and site assembly |
-| [movie_dbt/models/](movie_dbt/models/) | Staging, curated, and analytics SQL models |
-| [airflow/](airflow/) | Airflow dependencies and environment-based dbt profile |
-| [Dockerfile](Dockerfile), [docker-compose.yaml](docker-compose.yaml) | Local Airflow and PostgreSQL services |
-| [web_dashboard/](web_dashboard/) | Static dashboard, public JSON schema, and vendored chart library |
-| [.github/workflows/](.github/workflows/) | Validation and GitHub Pages deployment |
-| [tests/](tests/) | Python and browser regression tests with synthetic fixtures |
-| [.env.example](.env.example) | Configuration template without real credentials |
-| [AIRFLOW_SETUP.md](AIRFLOW_SETUP.md) | Setup, operational checks, and refresh details |
-| [docs/DASHBOARD_METRICS.md](docs/DASHBOARD_METRICS.md) | Metric definitions and public data contract |
-| [docs/DASHBOARD_OPERATIONS.md](docs/DASHBOARD_OPERATIONS.md) | Publication setup, permissions, verification, and recovery |
-
-Credentials belong in `.env`, AWS credential storage, or the environment. `.gitignore` excludes local secrets, downloaded data, logs, virtual environments, and generated dbt artifacts. Keep those files out of commits and public dashboard assets.
-
-## Dashboard and current limits
-
-The dashboard presents overview statistics, rating and genre charts, decades and top release years, ranked movies and people, and current US/India exhibition markets. It shows warehouse completion and export times separately from TMDB capture dates, with a warning after eight days. IMDb capture time is unavailable.
-
-Current limits:
-
-- Historical TMDB backfill is not implemented.
-- Full refreshes do not preserve previous now-playing snapshots for comparisons over time.
-- Budget, revenue, and country fields are extracted, but the broader financial and country comparison analytics from the original project scope are not implemented.
-- Airflow currently runs locally. Its scheduled pipeline only runs while the Docker services and host are available.
-- Automatic publication after an Airflow run requires private API/dispatch credentials and a scoped AWS read role. The current reviewed-snapshot site does not require these credentials; its data is updated manually.
+[GitHub validation](.github/workflows/validate-dashboard.yml) runs the Python and browser checks. dbt data tests run against Snowflake during `dbt_build`; see [the model definitions](movie_dbt/models/). Mocked tests do not replace a full run against the configured infrastructure.
 
 ## Data sources and attribution
 
-- **IMDb:** [IMDb non-commercial datasets](https://developer.imdb.com/non-commercial-datasets/) and the [dataset download directory](https://datasets.imdbws.com/).
-- **The Movie Database (TMDB):** [TMDB](https://www.themoviedb.org/) supplies genres, now-playing lists, and movie details through its API. See its [API and attribution guidance](https://developer.themoviedb.org/docs/faq).
+- **IMDb:** [Non-commercial datasets](https://developer.imdb.com/non-commercial-datasets/) and the [dataset download directory](https://datasets.imdbws.com/).
+- **TMDB:** [The Movie Database](https://www.themoviedb.org/) supplies genres, now-playing lists, and movie details. See its [API and attribution guidance](https://developer.themoviedb.org/docs/faq).
 
 This product uses the TMDB API but is not endorsed or certified by TMDB.
 
-Source data remains subject to the providers' terms. The owner confirmed permission covering this dashboard's public aggregates and ranked rows on October 2, 2026. See [IMDb's usage conditions](https://help.imdb.com/article/imdb/general-information/can-i-use-imdb-data-in-my-software/G5JTRESSHJBBHTGX), and obtain appropriate permission before adapting the public output to other uses. Preserve TMDB's approved logo and notice. This repository does not grant rights to redistribute either provider's datasets or images.
+Source data remains subject to the providers' terms. The owner confirmed permission covering this dashboard's public aggregates and ranked rows on October 2, 2026. See [IMDb's usage conditions](https://help.imdb.com/article/imdb/general-information/can-i-use-imdb-data-in-my-software/G5JTRESSHJBBHTGX) before adapting the public output to other uses. Preserve TMDB's approved logo and notice. This repository does not grant rights to redistribute either provider's datasets or images.
