@@ -6,7 +6,7 @@ A data engineering project that combines IMDb datasets and TMDB now-playing data
 
 **Live Dashboard:** [ishuapurva1996.github.io/movie-analytics-pipeline](https://ishuapurva1996.github.io/movie-analytics-pipeline/)
 
-The dashboard is live with the existing **October 5, 2026 data snapshot**. Data updates are manual for now. The weekly Airflow pipeline and automatic publication workflow are implemented; automatic publication still needs private integration setup and a verified complete ten-task run.
+The dashboard refreshes after successful Airflow runs through a validated private S3 export and GitHub Actions deployment. Automatic publication is enabled. The October 7, 2026 Airflow run completed all ten tasks; its export was then deployed manually through Actions and verified against the public JSON checksum. The weekly schedule runs while the host and Docker services are available.
 
 ## Dashboard preview
 
@@ -51,11 +51,9 @@ flowchart LR
     Staging --> Curated[dbt curated]
     Curated --> Analytics[dbt analytics]
     Analytics --> Export[Validated JSON export]
-    Export --> Snapshot[Reviewed snapshot: current mode]
-    Snapshot --> Actions[GitHub Actions]
+    Export --> Private[Private S3 bundle]
+    Private --> Actions[GitHub Actions]
     Actions --> Pages[GitHub Pages dashboard]
-    Export -. automatic mode: setup pending .-> Private[Private S3 bundle]
-    Private -.-> Actions
     Airflow[Airflow in Docker] -. extraction and loading .-> Extract
     Airflow -. build and test .-> Staging
 ```
@@ -82,8 +80,8 @@ The browser reads exported analytics; it does not connect to Snowflake, AWS, or 
 movie-analytics-pipeline/
 ├── .github/workflows/
 │   ├── validate-dashboard.yml          # Python, DAG, and browser checks
-│   ├── deploy-dashboard-snapshot.yml   # Current reviewed-snapshot publication
-│   └── deploy-dashboard.yml            # Optional automatic Airflow/S3 publication
+│   ├── deploy-dashboard-snapshot.yml   # Alternative reviewed-snapshot publication
+│   └── deploy-dashboard.yml            # Current automatic Airflow/S3 publication
 ├── dags/
 │   └── movie_pipeline.py               # Extraction, RAW refresh, dbt, and publication
 ├── scripts/                            # Ingestion, export, and site assembly
@@ -146,13 +144,13 @@ The DAG and dbt sources reference `MOVIE_DB.RAW`; check those definitions when a
 
 ## Dashboard deployment
 
-### Current mode: reviewed snapshot
+### Alternative mode: reviewed snapshot
 
 [Publish dashboard snapshot](https://github.com/ishuapurva1996/movie-analytics-pipeline/actions/workflows/deploy-dashboard-snapshot.yml) runs on relevant pushes to `main` or manual dispatch. It validates the checked-in JSON and SHA-256 checksum, assembles the approved frontend, uploads a Pages artifact, and verifies the public JSON after deployment.
 
 GitHub Pages uses **GitHub Actions** as its source. To update the data, replace the real export and checksum together, validate the change, and publish it through `main`. Redeploying the frontend alone preserves the original warehouse, export, and capture dates.
 
-### Optional mode: automatic publication after Airflow
+### Current mode: automatic publication after Airflow
 
 ```text
 Successful ingestion and dbt build
@@ -163,7 +161,7 @@ Successful ingestion and dbt build
   → Verify the public JSON checksum
 ```
 
-This route requires the dedicated Airflow metadata reader, a repository-scoped dispatch token, and a read-only AWS OIDC role. After completing setup and verifying the full pipeline, set `DASHBOARD_PUBLICATION_MODE=airflow` in GitHub repository variables. This switches off snapshot publication and enables the automatic workflow.
+This route uses the dedicated Airflow metadata reader, a repository-scoped dispatch token, and a read-only AWS OIDC role. `DASHBOARD_PUBLICATION_MODE=airflow` is enabled in this repository, switching off snapshot publication. The [first verified deployment from the Airflow export](https://github.com/ishuapurva1996/movie-analytics-pipeline/actions/runs/37705105560) succeeded on October 7, 2026 after the reader's S3 permissions were corrected. Subsequent successful Airflow runs request this workflow automatically; failed ingestion, dbt, or export tasks do not dispatch it.
 
 A successful dispatch only confirms that GitHub accepted the request. The deployment run and public checksum check confirm publication. Predeployment failures preserve the last successful site. See [publication setup and failure recovery](docs/DASHBOARD_OPERATIONS.md).
 
